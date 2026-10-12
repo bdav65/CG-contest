@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX := g++
-CXXFLAGS := -std=c++20 -g -Wno-pointer-arith -Wno-unused-result -Wno-cpp
+CXXFLAGS := -std=c++20 -g
 LDFLAGS := -lglfw -lvulkan -ldl
 SHADER_COMPILER := glslc
 

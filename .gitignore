@@ -5,3 +5,4 @@ output.png
 *.tar.gz
 .vscode
 *.py
+vgcore.*
