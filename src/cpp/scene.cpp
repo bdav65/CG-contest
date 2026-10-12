@@ -17,9 +17,6 @@ Scene::Scene(const std::filesystem::path& path) {
     loadLights(jsonScene);
 }
 
-std::tuple<std::vector<Object>, std::vector<Light>> Scene::sceneData() {
-    return std::make_tuple(objects, lights);
-}
 
 void Scene::loadCameraInformation(Json const &root) {
     Json const &eye = root["Eye"];
@@ -28,13 +25,13 @@ void Scene::loadCameraInformation(Json const &root) {
     this->bounces = root["MaxBounces"];
 }
 
+
 void Scene::loadObjects(Json const &root) {
     Json const &jsonObjects = root["Objects"];
 
     for (Json const &obj : jsonObjects) {
-        Material material = getMaterial(obj["material"]);
         uint object_index = objects.size();
-        objects.push_back(Object {material});
+        objects.push_back({getMaterial(obj["material"])});
 
         if (obj["type"] == "sphere") {
             glm::vec3 position(obj["position"][0], obj["position"][1], obj["position"][2]);
@@ -66,6 +63,7 @@ void Scene::loadObjects(Json const &root) {
     }
 }
 
+
 void Scene::loadLights(Json const &root) {
     Json const &jsonLights = root["Lights"];
 
@@ -76,6 +74,7 @@ void Scene::loadLights(Json const &root) {
         lights.push_back(Light { position, color });
     }
 }
+
 
 /* Returns the Material object from the current material node */
 Material getMaterial(Json const &mat) {

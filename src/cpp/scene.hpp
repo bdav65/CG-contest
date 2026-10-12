@@ -8,7 +8,7 @@
 using Json = nlohmann::json;
 
 struct Material {
-    glm::vec3 color;
+    alignas(16) glm::vec3 color;
     float ka;
     float kd;
     float ks;
@@ -26,16 +26,16 @@ struct Object {
 struct Sphere {
     uint obj;
     float radius;
-    glm::vec3 center;
+    alignas(16) glm::vec3 center;
 };
 
 
 struct Triangle {
     uint obj;
-    glm::vec3 v0;
-    glm::vec3 v1;
-    glm::vec3 v2;
-    glm::vec3 normal;
+    alignas(16) glm::vec3 v0;
+    alignas(16) glm::vec3 v1;
+    alignas(16) glm::vec3 v2;
+    alignas(16) glm::vec3 normal;
 };
 
 
@@ -74,6 +74,11 @@ class Scene {
     int maxBounces() const { return bounces; }
     std::filesystem::path texturePath() const { return texture; }
     std::tuple<std::vector<Object>, std::vector<Light>> sceneData();
+
+    std::vector<Object> getObjects() const { return objects; }
+    std::vector<Sphere> getSpheres() const { return spheres; }
+    std::vector<Triangle> getTriangles() const { return triangles; }
+    std::vector<Light> getLights() const { return lights; }
 
    private:
     void loadCameraInformation(Json const &root);
