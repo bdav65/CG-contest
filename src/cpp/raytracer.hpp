@@ -2,6 +2,7 @@
 
 #include "vulkan.hpp"
 #include "scene.hpp"
+#include "buffer.hpp"
 
 class RayTracer {
     bool headless;
@@ -11,8 +12,10 @@ class RayTracer {
     // Resources
     VkBuffer uniformBuffer;
     void *uniformBufferMap;
-    VkBuffer objectBuffer;
-    VkBuffer lightBuffer;
+    
+    // object, sphere, triangle, light
+    std::vector<StorageBuffer> storageBuffers;
+
     VkImage outputImage;
     VkImage textureImage;
     VkSampler textureSampler;

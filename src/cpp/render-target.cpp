@@ -1,5 +1,7 @@
 #include "render-target.hpp"
 
+#include <iostream>
+
 #include "raytracer.hpp"
 
 #include "lode/lodepng.hpp"
