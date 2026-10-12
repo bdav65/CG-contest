@@ -106,7 +106,7 @@ layout(std430, binding = 2) readonly buffer LightBuffer {
 
 layout(binding = 3) writeonly uniform image2D output_image;
 
-layout ( binding = 4) uniform sampler2D texture_image ;
+layout (binding = 4) uniform sampler2D texture_image;
 
 //////////////////////////////////////////
 //////////////// FUNCTIONS ///////////////
@@ -220,73 +220,6 @@ Intersection intersect_triangle(Object t, Ray r) {
 }
 
 
-#ifdef CYLINDERS
-Intersection intersect_cylinder(Object cylinder, Ray ray) {
-    Intersection hit;
-    hit.t = -1;
-
-    // transpose the ray such that c's origin is at (0, 0, 0)
-    ray.origin -= cylinder.base;
-
-    // intersection with body
-    vec3 nd = normalize(cylinder.direction);
-
-    float ndd = dot(nd, ray.direction);
-    float ndo = dot(nd, ray.origin);
-
-    float a = dot(ray.direction, ray.direction) - (ndd * ndd);
-    float b = 2 * (dot(ray.direction, ray.origin) - (ndd * ndo));
-    float c = dot(ray.origin, ray.origin) - (ndo * ndo) - (cylinder.radius * cylinder.radius);
-
-    float d = b * b - 4 * a * c;
-
-    if (d > 0.0) {
-        hit.t = (-b - sqrt(d)) / (2 * a);
-
-        if (hit.t <= EPSILON) {
-            hit.t = (-b + sqrt(d)) / (2 * a);
-        }
-    }
-    
-    // validate that intersection is within h
-    if (hit.t > EPSILON) {
-        hit.location = ray_at(ray, hit.t);
-
-        float h = length(cylinder.direction);
-        float th = dot(hit.location, nd);
-
-        if (th <= EPSILON || th > h) {
-            hit.t = -1;
-        } else {
-            hit.normal = normalize(hit.location - (nd * th));
-        }
-    }
-
-    // intersection with caps
-    if (abs(ndd) > EPSILON) {
-        float te1 = dot(cylinder.direction - ray.origin, nd) / ndd;
-        float te2 = dot(-ray.origin, nd) / ndd;
-
-        if (better_t(te1, hit.t) && length(ray_at(ray, te1) - cylinder.direction) < cylinder.radius) {
-            hit.t = te1;
-            hit.normal = normalize(nd);
-        }
-
-        if (better_t(te2, hit.t) && length(ray_at(ray, te2)) < cylinder.radius) {
-            hit.t = te2;
-            hit.normal = -nd;
-        }
-    }
-
-    hit.did_hit = hit.t > EPSILON;
-    hit.location = ray_at(ray, hit.t) + cylinder.base;
-    hit.material = cylinder.material;
-
-    return hit;
-}
-#endif
-
-
 Intersection intersect_scene(Ray ray, bool hit_glass) {
     Intersection intersect;
     intersect.t = 1.0 / 0.0;
@@ -307,11 +240,6 @@ Intersection intersect_scene(Ray ray, bool hit_glass) {
             case 1:
                 inter = intersect_triangle(objects[i], ray);
                 break;
-            #ifdef CYLINDERS
-            case 2:
-                inter = intersect_cylinder(objects[i], ray);
-                break;
-            #endif
             default:
                 continue;
         }
