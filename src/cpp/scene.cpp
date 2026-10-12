@@ -1,5 +1,8 @@
 #include "scene.hpp"
 
+#include <fstream>
+
+
 Scene::Scene(const std::filesystem::path& path) {
     std::ifstream inputFile(path);
     if (!inputFile)
@@ -29,42 +32,37 @@ void Scene::loadObjects(Json const &root) {
     Json const &jsonObjects = root["Objects"];
 
     for (Json const &obj : jsonObjects) {
+        Material material = getMaterial(obj["material"]);
+        uint object_index = objects.size();
+        objects.push_back(Object {material});
+
         if (obj["type"] == "sphere") {
-            Material material = getMaterial(obj["material"]);
             glm::vec3 position(obj["position"][0], obj["position"][1], obj["position"][2]);
             float radius = obj["radius"];
 
-            // Rotation is optional
-            glm::vec3 rotationAxis = obj.contains("rotation")
-                ? glm::vec3(obj["rotation"][0], obj["rotation"][1], obj["rotation"][2])
-                : glm::vec3(0, 0, 1);
-
-            float rotationAngle = obj.contains("angle") ? static_cast<float>(obj["angle"]) : 0.0;
-
-            constexpr glm::vec3 zero {};
-            objects.push_back(Object { material, 0, position, radius, rotationAxis, rotationAngle, zero, zero, zero });
-
+            spheres.push_back(Sphere {
+                object_index,
+                radius,
+                position
+            });
         } else if (obj["type"] == "triangle") {
-            Material material = getMaterial(obj["material"]);
-            glm::vec3 vertices[] {
-                glm::vec3(obj["v0"][0], obj["v0"][1], obj["v0"][2]),
-                glm::vec3(obj["v1"][0], obj["v1"][1], obj["v1"][2]),
-                glm::vec3(obj["v2"][0], obj["v2"][1], obj["v2"][2])
-            };
+            glm::vec3 v0 {obj["v0"][0], obj["v0"][1], obj["v0"][2]};
+            glm::vec3 v1 {obj["v1"][0], obj["v1"][1], obj["v1"][2]};
+            glm::vec3 v2 {obj["v2"][0], obj["v2"][1], obj["v2"][2]};
+            glm::vec3 normal = obj.contains("normal") ? 
+                glm::vec3(obj["normal"][0], obj["normal"][1], obj["normal"][2]) :
+                glm::normalize(glm::cross(v2 - v0, v1 - v0));
 
-            constexpr glm::vec3 zero {};
-            objects.push_back(Object { material, 1, zero, 0, zero, 0.0, vertices[0],  vertices[1], vertices[2] });
-
-        } else if (obj["type"] == "cylinder") {
-            Material material = getMaterial(obj["material"]);
-            glm::vec3 position(obj["position"][0], obj["position"][1], obj["position"][2]);
-            glm::vec3 direction(obj["direction"][0], obj["direction"][1], obj["direction"][2]);
-            float radius = obj["radius"];
-
-            constexpr glm::vec3 zero {};
-            objects.push_back(Object { material, 2, zero, radius, zero, 0.0, zero, zero, zero, position, direction });
-
-        } else throw std::runtime_error("Encountered incompatible shape! Try running another scene");
+            triangles.push_back(Triangle {
+                object_index,
+                v0,
+                v1,
+                v2,
+                normal
+            });
+        } else {
+            throw std::runtime_error("Encountered incompatible shape! Try running another scene");
+        }
     }
 }
 
@@ -81,7 +79,6 @@ void Scene::loadLights(Json const &root) {
 
 /* Returns the Material object from the current material node */
 Material getMaterial(Json const &mat) {
-    int hasTexture = mat.contains("hasTexture") && mat["hasTexture"];
     int isGlass = mat.contains("isTransparent") && mat["isTransparent"];
     float nt = isGlass ? static_cast<float>(mat["nt"]) : 0.0;
 
@@ -91,7 +88,6 @@ Material getMaterial(Json const &mat) {
         mat["kd"],
         mat["ks"],
         mat["n"],
-        hasTexture,
         isGlass,
         nt
     };

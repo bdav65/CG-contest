@@ -1,10 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <numeric>
-#include <fstream>
-#include <cmath>
-#include <iostream>
 #include <glm/glm.hpp>
 
 #include "json/json.hpp"
@@ -17,30 +13,31 @@ struct Material {
     float kd;
     float ks;
     uint n;
-    int hasTexture;
     int isGlass;
     float nt;
 };
 
+
 struct Object {
     Material material;
-    alignas(16) uint shapeType; // true = sphere; false = triangle
-
-    // these are used if it's a sphere
-    alignas(16) glm::vec3 center;
-    float radius; // this one is also the cylinder's radius
-    alignas(16) glm::vec3 rotationAxis;
-    float rotationAngle;
-
-    // these are used if it's a triangle
-    alignas(16) glm::vec3 v0;
-    alignas(16) glm::vec3 v1;
-    alignas(16) glm::vec3 v2;
-
-    // these are used if it's a cylinder
-    alignas(16) glm::vec3 base;
-    alignas(16) glm::vec3 direction;
 };
+
+
+struct Sphere {
+    uint obj;
+    float radius;
+    glm::vec3 center;
+};
+
+
+struct Triangle {
+    uint obj;
+    glm::vec3 v0;
+    glm::vec3 v1;
+    glm::vec3 v2;
+    glm::vec3 normal;
+};
+
 
 struct Light {
     alignas(16) glm::vec3 position;
@@ -66,6 +63,8 @@ class Scene {
     int bounces;
     std::filesystem::path texture;
     std::vector<Light> lights;
+    std::vector<Sphere> spheres;
+    std::vector<Triangle> triangles;
     std::vector<Object> objects;
 
    public:
