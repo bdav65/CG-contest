@@ -1,0 +1,45 @@
+{
+    "Eye": [0, 0, -1500],
+    "Shadows": true,
+    "Texture": "textures/earth.png",
+    "MaxBounces": 1,
+    "Lights": [
+        {
+            "position": [1682.635074, 1393.715669, -2862.294015],
+            "color": [1.0, 1.0, 1.0]
+        }
+    ],
+    "Objects": [
+        {
+            "type": "sphere",
+            "comment": "Earth sphere",
+            "position": [0, 0, 0],
+            "radius": 200,
+            "rotation": [1, 1, 0],
+            "angle": 60,
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "hasTexture": true,
+                "ka": 0.3,
+                "kd": 0.8,
+                "ks": 0.0,
+                "n": 1
+            }
+        },
+        {
+            "type": "sphere",
+            "comment": "Moon sphere",
+            "position": [200.000000, 170.000000, -370.000000],
+            "radius": 50,
+            "material":
+            {
+                "color": [0.8, 0.8, 0.8],
+                "ka": 0.2,
+                "kd": 0.8,
+                "ks": 0.0,
+                "n": 1
+            }
+        }
+    ]
+}

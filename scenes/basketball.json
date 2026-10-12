@@ -1,0 +1,35 @@
+{
+    "Eye": [200, 200, -1000],
+    "Shadows": false,
+    "Texture": "textures/basketball.png",
+    "MaxBounces": 5,
+    "Lights": [
+        {
+            "position": [-200, 600, -1500],
+            "color": [0.4, 0.4, 0.8]
+        },
+        {
+            "position": [600, 600, -1500],
+            "color": [0.8, 0.8, 0.4]
+        }
+    ],
+    "Objects": [
+        {
+            "type": "sphere",
+            "comment": "The Basketball",
+            "position": [200, 200, -400],
+            "radius": 80,
+            "rotation": [1, 1, 1],
+            "angle": 45,
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "hasTexture": true,
+                "ka": 0.2,
+                "kd": 0.8,
+                "ks": 0.0,
+                "n": 1
+            }
+        }
+    ]
+}

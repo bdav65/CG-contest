@@ -1,0 +1,7 @@
+build/
+ray_tracer
+output.png
+*.zip
+*.tar.gz
+.vscode
+*.py

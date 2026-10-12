@@ -1,0 +1,451 @@
+// Information about what version and extensions of GLSL we are using 
+#version 460
+#extension GL_EXT_scalar_block_layout : enable
+
+#define EPSILON 0.0001
+#define BIAS 0.001
+#define PI 3.14159
+
+uint seed;
+
+float noise() {
+    seed = seed * 747796405u + 2891336453u ;
+    uint w = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u;
+    return float(w) / 4294967295.0;
+}
+
+// This shader is run in little tiles of 8`x8x1 pixels
+// We need to specify this because we are using Compute Shaders
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+
+
+//////////////////////////////////////////
+///////////// DATA STRUCTURES ////////////
+//////////////////////////////////////////
+
+struct Material {
+    vec3 color;
+    float ka;
+    float kd;
+    float ks;
+    uint n;
+    bool has_texture;
+    bool is_glass;
+    float nt;
+};
+
+struct Object {
+    Material material;
+    uint shape_type; // 0 = sphere; 1 = triangle; 2 = cylinder
+
+    // these are used if it's a sphere
+    vec3 center;
+    float radius; // this one is also the cylinder's radius
+    vec3 rotation_axis;
+    float rotation_angle;
+
+    // these are used if it's a triangle
+    vec3 v0;
+    vec3 v1;
+    vec3 v2;
+
+    // these are used if it's a cylinder
+    vec3 base;
+    vec3 direction;
+};
+
+struct Light {
+    vec3 location;
+    vec3 color;
+};
+
+struct Intersection {
+    bool did_hit;
+    vec3 location;
+    vec3 normal;
+    vec2 uv;
+    float t;
+    Material material;
+};
+
+struct Ray {
+    float strength;
+    vec3 color;
+    vec3 origin;
+    vec3 direction;
+};
+
+vec3 ray_at(Ray ray, float t) {
+    return ray.origin + t * ray.direction;
+}
+
+
+//////////////////////////////////////////
+///// INPUTS & OUTPUTS OF THE SHADER /////
+//////////////////////////////////////////
+
+layout(std430, binding = 0) readonly uniform Camera {
+    vec3 origin;
+    float focal_len;
+    uvec2 resolution;
+    int subpixels_per_axis;
+    bool render_shadows;
+    int bounces;
+} camera;
+
+layout(std430, binding = 1) readonly buffer SphereBuffer {
+    int object_amount;
+    Object objects[];
+};
+
+layout(std430, binding = 2) readonly buffer LightBuffer {
+    int light_amount;
+    Light lights[];
+};
+
+layout(binding = 3) writeonly uniform image2D output_image;
+
+layout ( binding = 4) uniform sampler2D texture_image ;
+
+//////////////////////////////////////////
+//////////////// FUNCTIONS ///////////////
+//////////////////////////////////////////
+
+Ray generate_ray(vec2 coord) {
+    Ray r = {
+        1.0,
+        vec3(0),
+        camera.origin,
+        vec3(
+            2 * (coord.x) / camera.resolution.x - 1,
+            -2 * (coord.y) / camera.resolution.y + 1,
+            camera.focal_len
+        )
+    };
+
+    r.direction = normalize(r.direction);
+    return r;
+}
+
+
+// true if t1 is a better fit than t2
+bool better_t(float t1, float t2) {
+    bool c1 = t1 < EPSILON;
+    bool c2 = t2 < EPSILON;
+
+    return c1 ? false : (c2 ? true : t1 < t2);
+}
+
+
+Intersection intersect_sphere(Object s, Ray r) {
+    Intersection hit;
+    hit.did_hit = false;
+
+    float a = dot(r.direction, r.direction);
+    float b = 2 * dot(r.direction, (r.origin - s.center));
+    float c = dot(r.origin - s.center, r.origin - s.center) - s.radius * s.radius;
+
+    float d = b * b - 4 * a * c;
+
+    if (d < 0.0) {
+        return hit;
+    }
+
+    hit.t = (-b - sqrt(d)) / (2 * a);
+
+    if (hit.t <= EPSILON) {
+        hit.t = (-b + sqrt(d)) / (2 * a);
+    }
+
+    //it hit
+    hit.material = s.material;
+    hit.did_hit = hit.t > EPSILON;
+    hit.location = ray_at(r, hit.t);
+    hit.normal = normalize(hit.location - s.center);
+
+    if (hit.material.has_texture) {
+      vec3 delta = hit.location - s.center;
+
+      float angle = -radians(s.rotation_angle);
+      vec3 axis = normalize(s.rotation_axis);
+
+      delta = delta * cos(angle)
+          + cross(axis, delta) * sin(angle)
+          + axis * dot(axis, delta) * (1.0 - cos(angle));
+
+      hit.uv.x = 0.5 + atan(delta.y, delta.x) / (2.0 * PI);
+      hit.uv.y = 1.0 - acos(delta.z / s.radius) / PI;
+    }
+
+    return hit;
+}
+
+
+Intersection intersect_triangle(Object t, Ray r) {
+    Intersection hit;
+
+    t.v1 -= t.v0;
+    t.v2 -= t.v0;
+
+    hit.normal = normalize(cross(t.v1, t.v2));
+    float d = dot(hit.normal, r.direction);
+
+    if (abs(d) < EPSILON) {
+        hit.did_hit = false;
+        return hit;
+    }
+
+    hit.t = dot(t.v0 - r.origin, hit.normal) / d;
+    hit.location = ray_at(r, hit.t);
+
+    // solve u, v such that p = u * t.v1 + v * t.v2
+    vec3 p = hit.location - t.v0;
+
+    float d11 = dot(t.v1, t.v1);
+    float d12 = dot(t.v2, t.v1);
+    float d1p = dot(t.v1, p);
+    float d22 = dot(t.v2, t.v2);
+    float d2p = dot(t.v2, p);
+
+    float n = 1.0 / (d22 * d11 - d12 * d12);
+    float u = (d11 * d2p - d12 * d1p) * n;
+    float v = (d22 * d1p - d12 * d2p) * n;
+
+    // for a triangle, the following must hold
+    hit.did_hit = hit.t > EPSILON && u + EPSILON > 0.0 && v + EPSILON > 0.0 && u + v < 1.0 + EPSILON;
+    hit.material = t.material;
+
+    return hit;
+}
+
+
+#ifdef CYLINDERS
+Intersection intersect_cylinder(Object cylinder, Ray ray) {
+    Intersection hit;
+    hit.t = -1;
+
+    // transpose the ray such that c's origin is at (0, 0, 0)
+    ray.origin -= cylinder.base;
+
+    // intersection with body
+    vec3 nd = normalize(cylinder.direction);
+
+    float ndd = dot(nd, ray.direction);
+    float ndo = dot(nd, ray.origin);
+
+    float a = dot(ray.direction, ray.direction) - (ndd * ndd);
+    float b = 2 * (dot(ray.direction, ray.origin) - (ndd * ndo));
+    float c = dot(ray.origin, ray.origin) - (ndo * ndo) - (cylinder.radius * cylinder.radius);
+
+    float d = b * b - 4 * a * c;
+
+    if (d > 0.0) {
+        hit.t = (-b - sqrt(d)) / (2 * a);
+
+        if (hit.t <= EPSILON) {
+            hit.t = (-b + sqrt(d)) / (2 * a);
+        }
+    }
+    
+    // validate that intersection is within h
+    if (hit.t > EPSILON) {
+        hit.location = ray_at(ray, hit.t);
+
+        float h = length(cylinder.direction);
+        float th = dot(hit.location, nd);
+
+        if (th <= EPSILON || th > h) {
+            hit.t = -1;
+        } else {
+            hit.normal = normalize(hit.location - (nd * th));
+        }
+    }
+
+    // intersection with caps
+    if (abs(ndd) > EPSILON) {
+        float te1 = dot(cylinder.direction - ray.origin, nd) / ndd;
+        float te2 = dot(-ray.origin, nd) / ndd;
+
+        if (better_t(te1, hit.t) && length(ray_at(ray, te1) - cylinder.direction) < cylinder.radius) {
+            hit.t = te1;
+            hit.normal = normalize(nd);
+        }
+
+        if (better_t(te2, hit.t) && length(ray_at(ray, te2)) < cylinder.radius) {
+            hit.t = te2;
+            hit.normal = -nd;
+        }
+    }
+
+    hit.did_hit = hit.t > EPSILON;
+    hit.location = ray_at(ray, hit.t) + cylinder.base;
+    hit.material = cylinder.material;
+
+    return hit;
+}
+#endif
+
+
+Intersection intersect_scene(Ray ray, bool hit_glass) {
+    Intersection intersect;
+    intersect.t = 1.0 / 0.0;
+    intersect.did_hit = false;
+
+    for (int i = 0; i < object_amount; i++) {
+        Intersection inter;
+        inter.did_hit = false;
+
+        if (!hit_glass && objects[i].material.is_glass) {
+            continue;
+        }
+
+        switch (objects[i].shape_type) {
+            case 0:
+                inter = intersect_sphere(objects[i], ray);
+                break;
+            case 1:
+                inter = intersect_triangle(objects[i], ray);
+                break;
+            #ifdef CYLINDERS
+            case 2:
+                inter = intersect_cylinder(objects[i], ray);
+                break;
+            #endif
+            default:
+                continue;
+        }
+
+        if (inter.did_hit && inter.t < intersect.t) {
+            intersect = inter;
+        }
+    }
+
+    return intersect;
+}
+
+void phong_shading(inout Ray ray, Intersection hit) {
+    Material mat = hit.material;
+    vec3 color = mat.color;
+
+    if (mat.has_texture) {
+        color *= texture(texture_image, hit.uv).rgb;
+    }
+
+    vec3 diffuse = vec3(0, 0, 0);
+    vec3 specular = vec3(0, 0, 0);
+
+    vec3 N = hit.normal;
+    vec3 V = normalize(-ray.direction);
+
+    if (dot(N, V) < 0) {
+        N *= -1;
+    }
+
+    for (int i = 0; i < light_amount; i++) {
+        vec3 L = normalize(lights[i].location - hit.location);
+    
+        if (camera.render_shadows) {
+            Ray shadow = {0, vec3(0), hit.location + BIAS * N, L};
+            Intersection shadowHit = intersect_scene(shadow, false);
+
+            if (shadowHit.did_hit && shadowHit.t < length(lights[i].location - hit.location)) {
+                continue;
+            }
+        }
+
+        float NdL = dot(N, L);
+
+        if (NdL > 0) {
+            vec3 R = reflect(-L, N);
+            diffuse += NdL * lights[i].color;
+            specular += pow(max(0, dot(R, V)), mat.n) * lights[i].color;
+        }
+    }
+
+    ray.color += ray.strength * (color * (mat.ka + mat.kd * diffuse) + mat.ks * specular);
+    ray.strength *= mat.ks;
+    ray.origin = hit.location + BIAS * N;
+    ray.direction = reflect(ray.direction, N);
+}
+
+
+void glass_shading(inout Ray ray, Intersection hit) {
+    Material mat = hit.material;
+
+    vec3 N = hit.normal;
+    vec3 D = normalize(ray.direction);
+
+    bool inside = dot(hit.normal, D) > 0;
+
+    if (inside) {
+        N = -N;
+    }
+
+    float ni = inside ? mat.nt : 1.0;
+    float nt = inside ? 1.0 : mat.nt;
+
+    vec3 refraction = refract(D, N, ni / nt);
+
+    // float k0 = pow((ni - nt) / (ni + nt), 2);
+
+    // float kr = dot(refraction, refraction) == 0.0 ? 1.0 : k0 + (1 - k0) * pow(1 - dot(-D, N), 5);
+    // float kt = 1 - kr;
+
+    if (dot(refraction, refraction) == 0.0) {
+        ray.origin = hit.location + EPSILON * N;
+        ray.direction = reflect(D, N);
+    } else {
+        ray.origin = hit.location - EPSILON * N;
+        ray.direction = refraction;
+    }
+}
+
+
+vec4 pixel_color(vec2 pixel_coords) {
+    // doesn't work for AA, works for rest (probably)
+    int n = camera.subpixels_per_axis;
+    float step = 0.5 / n;
+    vec3 result = vec3(0);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            Ray ray = generate_ray(pixel_coords + vec2(step * (2 * i + 1), step * (2 * j + 1)));
+
+            // "0" -> "camera.bounces" for reflections
+            for (int k = -1; ray.strength > EPSILON && k < 0; k++) {
+                Intersection hit = intersect_scene(ray, true);
+
+                if (!hit.did_hit) {
+                    break;
+                }
+
+                // remove "false &&" for glass
+                if (false && hit.material.is_glass) {
+                    glass_shading(ray, hit);
+                } else {
+                    phong_shading(ray, hit);
+                }
+            }
+
+            result += ray.color;
+        }
+    }
+
+    return vec4(result / (n * n), 1.0);
+}
+
+
+/* Program starts here! */
+void main() {
+    ivec2 pixel_coordinates = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = ivec2(camera.resolution);
+
+    // If the current pixel is outside of the desired size, stop rendering
+    if (any(greaterThan(pixel_coordinates, size)))
+        return;
+
+    seed = (pixel_coordinates.x & 0xFFF) | (pixel_coordinates.y & 0xFFF ) << 12;
+
+    imageStore(output_image, pixel_coordinates, pixel_color(pixel_coordinates));
+}
