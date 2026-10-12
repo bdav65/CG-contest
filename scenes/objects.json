@@ -15,20 +15,6 @@
     ],
     "Objects": [
         {
-            "type": "cylinder",
-            "position": [205, 170, -400],
-            "direction": [10.0, 40.0, 30.0],
-            "radius": 12,
-            "material":
-            {
-                "color": [0.9, 0.9, 0.9],
-                "ka": 0.3,
-                "kd": 0.7,
-                "ks": 0.1,
-                "n": 5
-            }
-        },
-        {
             "type": "sphere",
             "position": [170, 200, -400],
             "radius": 12,

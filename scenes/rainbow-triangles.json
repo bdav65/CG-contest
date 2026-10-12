@@ -10,20 +10,6 @@
     "Texture": "textures/earth.png",
     "Shadows": false,
     "Objects": [
-        {
-            "type": "cylinder",
-            "position": [122, 122, -278],
-            "direction": [160, 160, -160.0],
-            "radius": 40,
-            "material":
-            {
-                "color": [0.1, 0.7, 0.9],
-                "ka": 0.3,
-                "kd": 0.7,
-                "ks": 0.1,
-                "n": 64
-            }
-        },
 	    {
             "type": "triangle",
             "v0": [525.000000, 200.000000, -200],
