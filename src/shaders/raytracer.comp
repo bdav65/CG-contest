@@ -94,19 +94,19 @@ layout(std430, binding = 0) readonly uniform Camera {
     int bounces;
 } camera;
 
-layout(std430, binding = 1) readonly buffer SphereBuffer {
+layout(std430, binding = 1) readonly buffer ObjectBuffer {
+    int object_amount;
+    Object objects[];
+};
+
+layout(std430, binding = 2) readonly buffer SphereBuffer {
     int sphere_amount;
     Sphere spheres[];
 };
 
-layout(std430, binding = 2) readonly buffer TriangleBuffer {
+layout(std430, binding = 3) readonly buffer TriangleBuffer {
     int triangle_amount;
     Triangle triangles[];
-};
-
-layout(std430, binding = 3) readonly buffer ObjectBuffer {
-    int object_amount;
-    Object objects[];
 };
 
 layout(std430, binding = 4) readonly buffer LightBuffer {
@@ -114,7 +114,7 @@ layout(std430, binding = 4) readonly buffer LightBuffer {
     Light lights[];
 };
 
-layout(binding = 4) writeonly uniform image2D output_image;
+layout(binding = 5) writeonly uniform image2D output_image;
 
 //////////////////////////////////////////
 //////////////// FUNCTIONS ///////////////
@@ -182,7 +182,7 @@ Hit intersect_triangle(Triangle t, Ray r) {
     t.v1 -= t.v0;
     t.v2 -= t.v0;
 
-    hit.normal = t.normal;
+    hit.normal = normalize(cross(t.v1, t.v2));
     float d = dot(hit.normal, r.direction);
 
     if (abs(d) < EPSILON) {
@@ -313,7 +313,6 @@ void glass_shading(inout Ray ray, Hit hit) {
 
 
 vec4 pixel_color(vec2 pixel_coords) {
-    // doesn't work for AA, works for rest (probably)
     int n = camera.subpixels_per_axis;
     float step = 0.5 / n;
     vec3 result = vec3(0);
@@ -329,11 +328,12 @@ vec4 pixel_color(vec2 pixel_coords) {
                     break;
                 }
 
-                if (objects[hit.obj].material.is_glass) {
-                    glass_shading(ray, hit);
-                } else {
-                    phong_shading(ray, hit);
-                }
+                phong_shading(ray, hit);
+
+                // if (objects[hit.obj].material.is_glass) {
+                //     glass_shading(ray, hit);
+                // } else {
+                // }
             }
 
             result += ray.color;
