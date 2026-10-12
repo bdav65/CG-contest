@@ -2,8 +2,9 @@
 #version 460
 #extension GL_EXT_scalar_block_layout : enable
 
+#define FRESNEL false
 #define EPSILON 0.0001
-#define BIAS 0.001
+#define BIAS 0.005
 #define PI 3.14159
 
 uint seed;
@@ -182,7 +183,7 @@ Hit intersect_triangle(Triangle t, Ray r) {
     t.v1 -= t.v0;
     t.v2 -= t.v0;
 
-    hit.normal = normalize(cross(t.v1, t.v2));
+    hit.normal = t.normal;
     float d = dot(hit.normal, r.direction);
 
     if (abs(d) < EPSILON) {
@@ -297,11 +298,20 @@ void glass_shading(inout Ray ray, Hit hit) {
 
     vec3 refraction = refract(D, N, ni / nt);
 
-    // float k0 = pow((ni - nt) / (ni + nt), 2);
+    #if FRESNEL
+    float k0 = pow((ni - nt) / (ni + nt), 2);
 
-    // float kr = dot(refraction, refraction) == 0.0 ? 1.0 : k0 + (1 - k0) * pow(1 - dot(-D, N), 5);
-    // float kt = 1 - kr;
+    float kr = dot(refraction, refraction) == 0.0 ? 1.0 : k0 + (1 - k0) * pow(1 - dot(-D, N), 5);
+    float kt = 1 - kr;
 
+    if (noise() < kr) {
+        ray.origin = hit.location + EPSILON * N;
+        ray.direction = reflect(D, N);
+    } else {
+        ray.origin = hit.location - EPSILON * N;
+        ray.direction = refraction;
+    }
+    #else
     if (dot(refraction, refraction) == 0.0) {
         ray.origin = hit.location + EPSILON * N;
         ray.direction = reflect(D, N);
@@ -309,6 +319,7 @@ void glass_shading(inout Ray ray, Hit hit) {
         ray.origin = hit.location - EPSILON * N;
         ray.direction = refraction;
     }
+    #endif
 }
 
 
@@ -328,12 +339,11 @@ vec4 pixel_color(vec2 pixel_coords) {
                     break;
                 }
 
-                phong_shading(ray, hit);
-
-                // if (objects[hit.obj].material.is_glass) {
-                //     glass_shading(ray, hit);
-                // } else {
-                // }
+                if (objects[hit.obj].material.is_glass) {
+                    glass_shading(ray, hit);
+                } else {
+                    phong_shading(ray, hit);
+                }
             }
 
             result += ray.color;

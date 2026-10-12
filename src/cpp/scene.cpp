@@ -42,7 +42,9 @@ void Scene::loadObjects(Json const &root) {
                 radius,
                 position
             });
-        } else if (obj["type"] == "triangle") {
+        }
+        
+        else if (obj["type"] == "triangle") {
             glm::vec3 v0 {obj["v0"][0], obj["v0"][1], obj["v0"][2]};
             glm::vec3 v1 {obj["v1"][0], obj["v1"][1], obj["v1"][2]};
             glm::vec3 v2 {obj["v2"][0], obj["v2"][1], obj["v2"][2]};
@@ -57,7 +59,34 @@ void Scene::loadObjects(Json const &root) {
                 v2,
                 normal
             });
-        } else {
+        }
+        
+        else if (obj["type"] == "aabb") {
+            glm::vec3 a {obj["v0"][0], obj["v0"][1], obj["v0"][2]};
+            glm::vec3 h {obj["v1"][0], obj["v1"][1], obj["v1"][2]};
+
+            glm::vec3 b {h.x, a.y, a.z};
+            glm::vec3 c {a.x, h.y, a.z};
+            glm::vec3 d {h.x, h.y, a.z};
+            glm::vec3 e {a.x, a.y, h.z};
+            glm::vec3 f {h.x, a.y, h.z};
+            glm::vec3 g {a.x, h.y, h.z};
+
+            triangles.push_back(Triangle {object_index, a, b, c, {0, 0, -1}}); // -z face
+            triangles.push_back(Triangle {object_index, b, c, d, {0, 0, -1}});
+            triangles.push_back(Triangle {object_index, a, b, e, {0, -1, 0}}); // -y face
+            triangles.push_back(Triangle {object_index, b, e, f, {0, -1, 0}});
+            triangles.push_back(Triangle {object_index, a, c, e, {-1, 0, 0}}); // -x face
+            triangles.push_back(Triangle {object_index, c, e, g, {-1, 0, 0}});
+            triangles.push_back(Triangle {object_index, e, f, g, {0, 0, 1}}); // +z face
+            triangles.push_back(Triangle {object_index, f, g, h, {0, 0, 1}});
+            triangles.push_back(Triangle {object_index, c, d, g, {0, 1, 0}}); // +y face
+            triangles.push_back(Triangle {object_index, d, g, h, {0, 1, 0}});
+            triangles.push_back(Triangle {object_index, b, d, f, {1, 0, 0}}); // +x face
+            triangles.push_back(Triangle {object_index, d, f, h, {1, 0, 0}});
+        }
+        
+        else {
             throw std::runtime_error("Encountered incompatible shape! Try running another scene");
         }
     }
