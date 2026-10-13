@@ -1,6 +1,7 @@
 #include "photonmap.hpp"
 
 #define LIGHT_PHOTONS 10000
+#define BOUNCES 4
 
 #define DEBUG
 
@@ -15,7 +16,7 @@ std::ostream &operator<<(std::ostream &os, const glm::vec3 &v) {
 
 
 std::ostream &operator<<(std::ostream &os, const Photon &p) {
-    return os << "Photon {" << p.color << ", " << p.incident << ", " << p.location << '}';
+    return os << "Photon {" << p.color << ", " << p.incident << ", " << p.location << ", " << p.axis << '}';
 }
 
 #endif
@@ -32,7 +33,7 @@ struct PhotonConfig {
 size_t PhotonMap::photonMapCapacity() {
     // todo a better way to set this
     uint photons_per_light = LIGHT_PHOTONS;
-    uint bounces = 8;
+    uint bounces = BOUNCES;
 
     return photons_per_light * scene.getLights().size() * bounces * sizeof(Photon);
 }
@@ -92,7 +93,7 @@ std::vector<Photon> PhotonMap::compute() {
     PhotonConfig photonConfig {
         LIGHT_PHOTONS,
         static_cast<uint>(LIGHT_PHOTONS * scene.getLights().size()),
-        8
+        BOUNCES
     };
 
 	memcpy(config.mapped, &photonConfig, sizeof(PhotonConfig));
@@ -122,18 +123,25 @@ std::vector<Photon> PhotonMap::compute() {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << "Generated photon map in " << duration.count() << " microseconds" << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    #endif
 
-    int pc = 0;
+    std::vector<Photon> kd;
 
     for (int i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
         Photon p = ((Photon *)photons.mapped)[i];
         
         if (p.color != glm::vec3{0, 0, 0}) {
-            pc++;
+            kd.push_back(p);
         }
     }
 
-    std::cout << "Resulted in " << pc << " photon collisions" << std::endl;
+    kdBalance(kd);
+
+    #ifdef DEBUG
+    stop = std::chrono::high_resolution_clock::now();
+    duration = duration_cast<std::chrono::microseconds>(stop - start);
+    std::cout << "Constructed kd-tree (" << kd.size() << " photons) in " << duration.count() << " microseconds" << std::endl;
     #endif
 
     return {};
@@ -141,6 +149,12 @@ std::vector<Photon> PhotonMap::compute() {
 
 
 static void kdBalanceRecursive(std::vector<Photon> &ps, int l, int r) {
+    if (r - l <= 1) {
+        return;
+    }
+
+    // std::cout << "Call(" << l << ", " << r << ")\n";
+
     glm::vec3 minimum {INFINITY, INFINITY, INFINITY};
     glm::vec3 maximum {-INFINITY, -INFINITY, -INFINITY};
 
@@ -149,7 +163,29 @@ static void kdBalanceRecursive(std::vector<Photon> &ps, int l, int r) {
         maximum = glm::max(maximum, ps[i].location);
     }
 
+    // std::cout << "Minimum " << minimum << " and maximum " << maximum << '\n';
 
+    glm::vec3 delta = maximum - minimum;
+
+    int m = l + (r - l) / 2;
+
+    for (int i = 0; i < 3; i++) {
+        if (glm::max(delta.x, glm::max(delta.y, delta.z)) != delta[i]) {
+            continue;
+        }
+
+        // std::cout << "Splitting on axis " << i << '\n';
+
+        std::sort(ps.begin() + l, ps.begin() + r, [i](Photon const &p1, Photon const &p2){
+            return p1.location[i] < p2.location[i];
+        });
+
+        ps[m].axis = i;
+        break;
+    }
+
+    kdBalanceRecursive(ps, l, m - 1);
+    kdBalanceRecursive(ps, m + 1, r);
 }
 
 
