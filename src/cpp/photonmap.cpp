@@ -1,21 +1,22 @@
 #include "photonmap.hpp"
+#include "kdify.hpp"
+#include "timer.hpp"
 
-#define LIGHT_PHOTONS 5000
+#define LIGHT_PHOTONS 100000
 #define BOUNCES 4
 
 #define DEBUG
 
 #ifdef DEBUG
 #include <iostream>
-#include <chrono>
 
 
-std::ostream &operator<<(std::ostream &os, const glm::vec3 &v) {
+static std::ostream &operator<<(std::ostream &os, const glm::vec3 &v) {
     return os << '[' << v.x << ", " << v.y << ", " << v.z << ']';
 }
 
 
-std::ostream &operator<<(std::ostream &os, const Photon &p) {
+static std::ostream &operator<<(std::ostream &os, const Photon &p) {
     return os << "Photon {" << p.color << ", " << p.incident << ", " << p.location << ", " << p.axis << '}';
 }
 
@@ -35,7 +36,7 @@ size_t PhotonMap::photonMapCapacity() {
     uint photons_per_light = LIGHT_PHOTONS;
     uint bounces = BOUNCES;
 
-    return photons_per_light * scene.getLights().size() * bounces * sizeof(Photon);
+    return photons_per_light * scene.getLights().size() * (bounces + 1) * sizeof(Photon);
 }
 
 
@@ -84,10 +85,10 @@ void PhotonMap::createPipeline() {
     this->pipelineLayout = pipelineLayout;
 }
 
+
 MappedStorageBuffer PhotonMap::compute() {
-    #ifdef DEBUG
-    auto start = std::chrono::high_resolution_clock::now();
-    #endif
+    Timer steps;
+    Timer total;
 
 	// Update uniform buffer
     PhotonConfig photonConfig {
@@ -119,81 +120,34 @@ MappedStorageBuffer PhotonMap::compute() {
     vulkanHelper.submitCommands(commandBuffer);
     vulkanHelper.waitForCommandCompletion();
 
-    #ifdef DEBUG
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << "Generated photon map in " << duration.count() << " microseconds" << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-    #endif
+    steps.log(std::format("Finished tracing {} photons", photonMapCapacity() / sizeof(Photon)));
 
-    std::vector<Photon> kd;
-
+    std::vector<Photon> hits;
     Photon *raw = static_cast<Photon *>(photons.mapped_data);
-    int non_miss = 0;
 
     for (size_t i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
         if (raw[i].axis >= 0) {
-            raw[non_miss] = raw[i];
-            non_miss++;
+            hits.push_back(raw[i]);
         }
     }
 
-    memcpy(photons.mapped_size, &non_miss, sizeof(int));
+    steps.log("Copied photon data to RAM");
 
-    #ifdef DEBUG
-    stop = std::chrono::high_resolution_clock::now();
-    duration = duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << "Reduced " << non_miss << " photons in " << duration.count() << " microseconds" << std::endl;
-    #endif
+    kdify(hits.data(), hits.size());
+
+    steps.log("Constructed KD-tree");
+
+    photons.setSize(hits.size());
+    memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
+    
+    steps.log("Sent back photon data to GPU");
+    total.log("Finished preparing the photon map");
 
     return photons;
 }
 
 
-static void kdBalanceRecursive(std::vector<Photon> &ps, int l, int r) {
-    if (r - l <= 1) {
-        return;
-    }
-
-    // std::cout << "Call(" << l << ", " << r << ")\n";
-
-    glm::vec3 minimum {INFINITY, INFINITY, INFINITY};
-    glm::vec3 maximum {-INFINITY, -INFINITY, -INFINITY};
-
-    for (int i = l; i < r; i++) {
-        minimum = glm::min(minimum, ps[i].location);
-        maximum = glm::max(maximum, ps[i].location);
-    }
-
-    // std::cout << "Minimum " << minimum << " and maximum " << maximum << '\n';
-
-    glm::vec3 delta = maximum - minimum;
-
-    int m = l + (r - l) / 2;
-
-    for (int i = 0; i < 3; i++) {
-        if (glm::max(delta.x, glm::max(delta.y, delta.z)) != delta[i]) {
-            continue;
-        }
-
-        // std::cout << "Splitting on axis " << i << '\n';
-
-        std::sort(ps.begin() + l, ps.begin() + r, [i](Photon const &p1, Photon const &p2){
-            return p1.location[i] < p2.location[i];
-        });
-
-        ps[m].axis = i;
-        break;
-    }
-
-    kdBalanceRecursive(ps, l, m - 1);
-    kdBalanceRecursive(ps, m + 1, r);
-}
-
-
 PhotonMap::~PhotonMap() {
-    std::cout << "Destroying photon map Vulkan context\n";
-
     VkDevice device = vulkanHelper.getDevice();
     vkDeviceWaitIdle(device); // wait until all submitted stuff is done
 

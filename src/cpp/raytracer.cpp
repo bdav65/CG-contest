@@ -1,9 +1,7 @@
 #include "raytracer.hpp"
+#include "timer.hpp"
 
-
-#ifdef FRAMETIME
-#include <chrono>
-#endif
+#include <iostream>
 
 
 RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, MappedStorageBuffer photons):
@@ -22,18 +20,16 @@ RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, MappedStorageBuffer pho
 
 
 void RayTracer::run() {
+    Timer total;
+    size_t frames = 0;
+
     while (vulkanHelper.getRenderTarget()->renderNextFrame()) {
-        #ifdef FRAMETIME
-        auto start = std::chrono::high_resolution_clock::now();
-        #endif
-
         drawFrame();
+        frames++;
+    }
 
-        #ifdef FRAMETIME
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = duration_cast<std::chrono::microseconds>(stop - start);
-        std::cout << duration.count() << " microseconds" << std::endl;
-        #endif
+    if (frames) {
+        std::cout << "log: Rendered " << frames << " frames, average " << total.get().count() / frames << "ms\n";
     }
 }
 
@@ -59,7 +55,7 @@ void RayTracer::createResources() {
 
 void RayTracer::createPipeline() {
     // Create shader module
-    std::vector<char> shaderCode = readFile("./build/shaders/viewphotons.comp.spv");
+    std::vector<char> shaderCode = readFile("./build/shaders/raytracer.comp.spv");
 	shaderModule = vulkanHelper.createShaderModule(shaderCode);
 
     // Create descriptor set

@@ -24,6 +24,7 @@ struct MappedStorageBuffer {
     void *mapped_data;
     VkDeviceMemory memory;
 
+    void setSize(int n) { memcpy(mapped_size, &n, sizeof(int)); }; // does not (re)allocate anything
     void setDescriptor(ResourceDescriptor &descriptor);
     void destroy();
 
