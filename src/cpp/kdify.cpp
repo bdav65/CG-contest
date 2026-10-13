@@ -44,7 +44,7 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
 
     int pivot = l + ln;
 
-    // std::cout << "Left receives " << ln << " items, right " << rn << '\n';
+    // std::cout << "Left receives " << ln << " items, right " << r - l - ln << '\n';
 
     // Find bounding coordinates
     glm::vec3 minimum {INFINITY, INFINITY, INFINITY};
@@ -61,18 +61,37 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
     float dim = glm::max(delta.x, glm::max(delta.y, delta.z));
 
     // Sort in dimension with largest delta
-    for (int i = 0; i < 3; i++) {
-        if (dim != delta[i]) {
+    for (int d = 0; d < 3; d++) {
+        if (dim != delta[d]) {
             continue;
         }
 
-        // std::cout << "Splitting on axis " << i << '\n';
+        // std::cout << "Splitting on axis " << d << std::endl;
 
-        std::sort(nodes.begin() + l, nodes.begin() + r, [&](Node const &n1, Node const &n2){
-            return data[n1.i].location[i] < data[n2.i].location[i];
+        // std::cout << "Splitting on axis " << i << '\n';
+        std::nth_element(nodes.begin() + l, nodes.begin() + pivot, nodes.begin() + r, [&](Node const &n1, Node const &n2){
+            return data[n1.i].location[d] < data[n2.i].location[d];
         });
 
-        data[nodes[pivot].i].axis = i;
+        // split on pivot
+        int li = l;
+        int ri = r - 1;
+        data[nodes[pivot].i].axis = d;
+
+        for (int i = l; i < r; i++) {
+            if (i == pivot) {
+                continue;
+            }
+
+            if (data[nodes[i].i].location[d] < data[nodes[pivot].i].location[d]) {
+                std::swap(nodes[i], nodes[li]);
+                li++;
+            } else {
+                std::swap(nodes[i], nodes[ri]);
+                ri--;
+            }
+        }
+
         break;
     }
 
