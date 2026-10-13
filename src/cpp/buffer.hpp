@@ -3,38 +3,51 @@
 #include "vulkan.hpp"
 
 
+struct UniformBuffer {
+    VulkanHelper &helper;
+    VkBuffer buffer;
+    void *mapped;
+    VkDeviceMemory memory;
+
+    void setDescriptor(ResourceDescriptor &descriptor);
+    void destroy();
+
+    UniformBuffer(VulkanHelper &helper, size_t capacity);
+};
+
+
+struct MappedStorageBuffer {
+    VulkanHelper &helper;
+    VkBuffer buffer;
+    void *mapped;
+    VkDeviceMemory memory;
+
+    void setDescriptor(ResourceDescriptor &descriptor);
+    void destroy();
+
+    MappedStorageBuffer(VulkanHelper &helper, size_t capacity);
+};
+
+
 struct StorageBuffer {
     VulkanHelper &helper;
     VkBuffer buffer;
     VkDeviceMemory memory;
 
-    void setDescriptor(ResourceDescriptor &descriptor) {
-        descriptor.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptor.buffer = buffer;
-    }
-
-    void destroy() {
-        vkDestroyBuffer(helper.getDevice(), buffer, nullptr);
-        vkFreeMemory(helper.getDevice(), memory, nullptr);
-    }
+    void setDescriptor(ResourceDescriptor &descriptor);
+    void destroy();
 
     template<typename T>
     StorageBuffer(VulkanHelper &helper, std::vector<T> const &data):
         helper(helper)
     {
-        int n = data.size();
-        int size = 16 + n * sizeof(T);
-
-        buffer = helper.createBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, size);
-        memory = helper.allocateBufferMemory(buffer);
-
-        void *bufferMap;
-
-        vkMapMemory(helper.getDevice(), memory, 0, size, 0, &bufferMap);
-
-        memcpy(bufferMap, &n, sizeof(int));
-        memcpy(((char *)bufferMap + 16), data.data(), n * sizeof(T));
-
-        vkUnmapMemory(helper.getDevice(), memory);
+        initialize(data.data(), data.size(), sizeof(T));
     }
+    
+    private:
+        void initialize(void const *data, int n, int size);
 };
+
+
+std::vector<char> readFile(const std::string& filename);
+std::tuple<std::vector<unsigned char>, VkExtent2D> readImage(const std::filesystem::path& filename);

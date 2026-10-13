@@ -4,6 +4,7 @@
 #include "scene.hpp"
 #include "buffer.hpp"
 
+
 class RayTracer {
     bool headless;
     Scene scene;
@@ -28,16 +29,13 @@ class RayTracer {
     VkPipeline pipeline;
     VkPipelineLayout pipelineLayout;
 
-   public:
-    RayTracer(Scene scene, bool headless);
-    void run();
-    ~RayTracer();
+    public:
+        RayTracer(Scene scene, bool headless);
+        void run();
+        ~RayTracer();
 
-   private:
-    void createResources();
-    void createPipeline();
-    void drawFrame();
+    private:
+        void createResources();
+        void createPipeline();
+        void drawFrame();
 };
-
-std::vector<char> readFile(const std::string& filename);
-std::tuple<std::vector<unsigned char>, VkExtent2D> readImage(const std::filesystem::path& filename);

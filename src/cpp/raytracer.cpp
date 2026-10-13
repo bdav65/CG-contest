@@ -1,9 +1,4 @@
 #include "raytracer.hpp"
-#include "lode/lodepng.hpp"
-
-#include <iostream>
-#include <fstream>
-#include <utility>
 
 #ifdef FRAMETIME
 #include <chrono>
@@ -16,6 +11,7 @@ RayTracer::RayTracer(Scene scene, bool headless)
    createResources();
    createPipeline();
 }
+
 
 void RayTracer::run() {
     while (vulkanHelper.getRenderTarget()->renderNextFrame()) {
@@ -32,6 +28,7 @@ void RayTracer::run() {
         #endif
     }
 }
+
 
 void RayTracer::createResources() {
     size_t uniformBufferSize = sizeof(Camera);
@@ -62,6 +59,7 @@ void RayTracer::createResources() {
     // Write texture
     vulkanHelper.uploadToImage(textureData, textureImage, textureSize);
 }
+
 
 void RayTracer::createPipeline() {
     // Create shader module
@@ -94,6 +92,7 @@ void RayTracer::createPipeline() {
     this->pipeline = pipeline;
     this->pipelineLayout = pipelineLayout;
 }
+
 
 void RayTracer::drawFrame() {
 	// Update uniform buffer
@@ -131,6 +130,7 @@ void RayTracer::drawFrame() {
 	vulkanHelper.presentImage(outputImage, outputSize);
 }
 
+
 RayTracer::~RayTracer() {
     VkDevice device = vulkanHelper.getDevice();
     vkDeviceWaitIdle(device); // wait until all submitted stuff is done
@@ -151,37 +151,4 @@ RayTracer::~RayTracer() {
     vkDestroyShaderModule(device, shaderModule, nullptr); 
     vkDestroyPipeline(device, this->pipeline, nullptr);
     vulkanHelper.terminate();
-}
-
-
-
-/** Utility function to read a file's contents into a vector of characters */
-std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
-    }
-
-    size_t fileSize = file.tellg();
-    std::vector<char> buffer(fileSize);
-
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-
-    return buffer;
-}
-
-/** Utility function to read and decode a PNG into a vector of bytes (RGBA) */
-std::tuple<std::vector<unsigned char>, VkExtent2D> readImage(const std::filesystem::path& filename) {
-    std::vector<unsigned char> image; //the raw pixels
-    uint width, height;
-
-    if (uint error = lodepng::decode(image, width, height, filename)) {
-        std::cout << "Failed to read image! Error " << error << ": " << lodepng_error_text(error) << std::endl;
-        throw std::runtime_error("Failed to load image.");
-    }
-
-    return std::make_pair(image, VkExtent2D {width, height});
 }
