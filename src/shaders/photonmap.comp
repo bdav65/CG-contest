@@ -1,6 +1,7 @@
 #version 460
 #extension GL_EXT_scalar_block_layout : enable
 
+#define FRESNEL
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
@@ -223,6 +224,48 @@ Hit intersect_scene(Ray ray) {
 }
 
 
+void glass_shading(inout Ray ray, Hit hit) {
+    Material mat = objects[hit.obj].material;
+
+    vec3 N = hit.normal;
+    vec3 D = normalize(ray.direction);
+
+    bool inside = dot(hit.normal, D) > 0;
+
+    if (inside) {
+        N = -N;
+    }
+
+    float ni = inside ? mat.nt : 1.0;
+    float nt = inside ? 1.0 : mat.nt;
+
+    vec3 refraction = refract(D, N, ni / nt);
+
+    #ifdef FRESNEL
+    float k0 = pow((ni - nt) / (ni + nt), 2);
+
+    float kr = dot(refraction, refraction) == 0.0 ? 1.0 : k0 + (1 - k0) * pow(1 - dot(-D, N), 5);
+    float kt = 1 - kr;
+
+    if (noise() < kr) {
+        ray.origin = hit.location + BIAS * N;
+        ray.direction = reflect(D, N);
+    } else {
+        ray.origin = hit.location - BIAS * N;
+        ray.direction = refraction;
+    }
+    #else
+    if (dot(refraction, refraction) == 0.0) {
+        ray.origin = hit.location + BIAS * N;
+        ray.direction = reflect(D, N);
+    } else {
+        ray.origin = hit.location - BIAS * N;
+        ray.direction = refraction;
+    }
+    #endif
+}
+
+
 // https://arxiv.org/pdf/0912.4540
 // https://medium.com/@vagnerseibert/distributing-points-on-a-sphere-6b593cc05b42
 vec3 sphere_direction(uint i, uint n) {
@@ -271,7 +314,11 @@ Photon photon_hit(inout Ray ray, Hit hit) {
         return MISS;
     } else {
         // absorption/refraction (todo)
-        ray.strength = 0.0;
+        if (mat.is_glass) {
+            glass_shading(ray, hit);
+        } else {
+            ray.strength = 0.0;
+        }
     }
 
     return mat.ks > EPSILON ? MISS : p;
