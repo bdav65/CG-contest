@@ -1,0 +1,311 @@
+#version 460
+#extension GL_EXT_scalar_block_layout : enable
+
+#define EPSILON 0.0001
+#define BIAS 0.001
+#define PI 3.14159
+
+// 1D array, will have to find out if these numbers are good
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+
+struct Material {
+    vec3 color;
+    float ka;
+    float kd;
+    float ks;
+    uint n;
+    bool is_glass;
+    float nt;
+};
+
+
+struct Object {
+    Material material;
+};
+
+
+struct Sphere {
+    uint obj;
+    float radius;
+    vec3 center;
+};
+
+
+struct Triangle {
+    uint obj;
+    vec3 v0;
+    vec3 v1;
+    vec3 v2;
+    vec3 normal;
+};
+
+
+struct Light {
+    vec3 location;
+    vec3 color;
+};
+
+
+struct Hit {
+    bool did_hit;
+    vec3 location;
+    vec3 normal;
+    float t;
+    uint obj;
+};
+
+
+struct Ray {
+    float strength;
+    vec3 color;
+    vec3 origin;
+    vec3 direction;
+};
+
+
+struct Photon {
+    vec3 color;
+    vec3 incident;
+    vec3 location;
+};
+
+
+layout(std430, binding = 0) readonly uniform Config {
+    uint photons_per_light;
+    uint photons_total;
+    int bounces;
+} config;
+
+layout(std430, binding = 1) readonly buffer ObjectBuffer {
+    int object_amount;
+    Object objects[];
+};
+
+layout(std430, binding = 2) readonly buffer SphereBuffer {
+    int sphere_amount;
+    Sphere spheres[];
+};
+
+layout(std430, binding = 3) readonly buffer TriangleBuffer {
+    int triangle_amount;
+    Triangle triangles[];
+};
+
+layout(std430, binding = 4) readonly buffer LightBuffer {
+    int light_amount;
+    Light lights[];
+};
+
+layout(binding = 5) writeonly buffer PhotonBuffer {
+    Photon photons[];
+};
+
+
+const Photon MISS = {vec3(0.0), vec3(0.0), vec3(0.0)};
+
+
+uint seed;
+
+
+float noise() {
+    seed = seed * 747796405u + 2891336453u ;
+    uint w = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u;
+    return float(w) / 4294967295.0;
+}
+
+
+vec3 ray_at(Ray ray, float t) {
+    return ray.origin + t * ray.direction;
+}
+
+
+Hit intersect_sphere(Sphere sphere, Ray ray) {
+    Hit hit;
+    hit.did_hit = false;
+
+    float a = dot(ray.direction, ray.direction);
+    float b = 2 * dot(ray.direction, (ray.origin - sphere.center));
+    float c = dot(ray.origin - sphere.center, ray.origin - sphere.center) - sphere.radius * sphere.radius;
+
+    float d = b * b - 4 * a * c;
+
+    if (d < 0.0) {
+        return hit;
+    }
+
+    hit.t = (-b - sqrt(d)) / (2 * a);
+
+    if (hit.t <= EPSILON) {
+        hit.t = (-b + sqrt(d)) / (2 * a);
+    }
+
+    //it hit
+    hit.obj = sphere.obj;
+    hit.did_hit = hit.t > EPSILON;
+    hit.location = ray_at(ray, hit.t);
+    hit.normal = normalize(hit.location - sphere.center);
+
+    return hit;
+}
+
+
+Hit intersect_triangle(Triangle t, Ray r) {
+    Hit hit;
+
+    t.v1 -= t.v0;
+    t.v2 -= t.v0;
+
+    hit.normal = t.normal;
+    float d = dot(hit.normal, r.direction);
+
+    if (abs(d) < EPSILON) {
+        hit.did_hit = false;
+        return hit;
+    }
+
+    hit.t = dot(t.v0 - r.origin, hit.normal) / d;
+    hit.location = ray_at(r, hit.t);
+
+    // solve u, v such that p = u * t.v1 + v * t.v2
+    vec3 p = hit.location - t.v0;
+
+    float d11 = dot(t.v1, t.v1);
+    float d12 = dot(t.v2, t.v1);
+    float d1p = dot(t.v1, p);
+    float d22 = dot(t.v2, t.v2);
+    float d2p = dot(t.v2, p);
+
+    float n = 1.0 / (d22 * d11 - d12 * d12);
+    float u = (d11 * d2p - d12 * d1p) * n;
+    float v = (d22 * d1p - d12 * d2p) * n;
+
+    // for a triangle, the following must hold
+    hit.did_hit = hit.t > EPSILON && u + EPSILON > 0.0 && v + EPSILON > 0.0 && u + v < 1.0 + EPSILON;
+    hit.obj = t.obj;
+
+    return hit;
+}
+
+
+Hit intersect_scene(Ray ray) {
+    Hit hit;
+    hit.t = 1.0 / 0.0;
+    hit.did_hit = false;
+
+    if (ray.strength < EPSILON) {
+        return hit;
+    }
+
+    for (int i = 0; i < sphere_amount; i++) {
+        Hit attempt = intersect_sphere(spheres[i], ray);
+
+        if (attempt.did_hit && attempt.t < hit.t) {
+            hit = attempt;
+        }
+    }
+
+    for (int i = 0; i < triangle_amount; i++) {
+        Hit attempt = intersect_triangle(triangles[i], ray);
+
+        if (attempt.did_hit && attempt.t < hit.t) {
+            hit = attempt;
+        }
+    }
+
+    return hit;
+}
+
+
+// https://arxiv.org/pdf/0912.4540
+// https://medium.com/@vagnerseibert/distributing-points-on-a-sphere-6b593cc05b42
+vec3 sphere_direction(uint i, uint n) {
+    float k = i + 0.5;
+
+    float phi = acos(1.0 - (2.0 * k) / n);
+    float theta = PI * (1.0 + sqrt(5.0)) * k;
+
+    return vec3(
+        cos(theta) * sin(phi),
+        sin(theta) * sin(phi),
+        cos(phi)
+    );
+}
+
+
+Photon photon_hit(inout Ray ray, Hit hit) {
+    Material mat = objects[hit.obj].material;
+
+    float r = noise();
+
+    Photon p = {
+        ray.color,
+        ray.direction,
+        hit.location
+    };
+
+    if (r <= mat.kd) { // diffuse reflection
+        ray.color *= mat.color;
+        ray.origin = hit.location + BIAS * hit.normal;
+        ray.direction = normalize(vec3(noise(), noise(), noise()));
+
+        if (dot(ray.direction, hit.normal) <= EPSILON) {
+            ray.direction *= -1;
+        }
+
+        return p;
+    }
+
+    if (r <= mat.kd + mat.ks) { // specular reflection
+        ray.color *= mat.color;
+        ray.origin = hit.location + BIAS * hit.normal;
+        ray.direction = reflect(ray.direction, hit.normal);
+
+        return MISS;
+    }
+
+    // absorption/refraction (todo)
+    ray.strength = 0.0;
+    return p;
+}
+
+
+void shoot_photon(uint l, uint i) {
+    Light light = lights[l];
+
+    Ray ray = {
+        1.0,
+        light.color,
+        light.location,
+        sphere_direction(i, config.photons_per_light)
+    };
+
+    uint photon_index = i * (config.bounces + 1);
+    int k;
+
+    for (int k = -1; ray.strength > EPSILON && k < config.bounces; k++) {
+        Hit hit = intersect_scene(ray);
+        
+        if (!hit.did_hit) {
+            break;
+        }
+
+        photons[photon_index + k + 1] = photon_hit(ray, hit);
+    }
+
+    while (k < config.bounces) {
+        photons[photon_index + k + 1] = MISS;
+        k++;
+    }
+}
+
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+
+    if (i >= config.photons_total) {
+        return;
+    }
+
+    shoot_photon(i / config.photons_per_light, i % config.photons_per_light);
+}
