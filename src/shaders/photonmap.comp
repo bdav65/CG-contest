@@ -127,6 +127,15 @@ vec3 ray_at(Ray ray, float t) {
 }
 
 
+vec3 random_direction() {
+    return normalize(vec3(
+        noise() - 0.5,
+        noise() - 0.5,
+        noise() - 0.5
+    ));
+}
+
+
 Hit intersect_sphere(Sphere sphere, Ray ray) {
     Hit hit;
     hit.did_hit = false;
@@ -266,22 +275,6 @@ void glass_shading(inout Ray ray, Hit hit) {
 }
 
 
-// https://arxiv.org/pdf/0912.4540
-// https://medium.com/@vagnerseibert/distributing-points-on-a-sphere-6b593cc05b42
-vec3 sphere_direction(uint i, uint n) {
-    float k = i + 0.5;
-
-    float phi = acos(1.0 - (2.0 * k) / n);
-    float theta = PI * (1.0 + sqrt(5.0)) * k;
-
-    return vec3(
-        cos(theta) * sin(phi),
-        sin(theta) * sin(phi),
-        cos(phi)
-    );
-}
-
-
 Photon photon_hit(inout Ray ray, Hit hit) {
     Material mat = objects[hit.obj].material;
 
@@ -297,21 +290,15 @@ Photon photon_hit(inout Ray ray, Hit hit) {
     if (r <= mat.kd) { // diffuse reflection
         ray.color *= mat.color;
         ray.origin = p.location;
-        ray.direction = sphere_direction(int(noise() * 999.9), 1000);
+        ray.direction = random_direction();
 
         if (dot(ray.direction, hit.normal) <= EPSILON) {
             ray.direction *= -1;
         }
-
-        return p;
-    }
-
-    else if (r <= mat.kd + mat.ks) { // specular reflection
+    } else if (r <= mat.kd + mat.ks) { // specular reflection
         ray.color *= mat.color;
         ray.origin = p.location;
         ray.direction = reflect(ray.direction, hit.normal);
-
-        return MISS;
     } else {
         // absorption/refraction (todo)
         if (mat.is_glass) {
@@ -335,7 +322,7 @@ void shoot_photon(uint index) {
         1.0,
         light.color,
         light.location,
-        sphere_direction(i, config.photons_per_light)
+        random_direction()
     };
 
     uint photon_index = index * (config.bounces + 1);
