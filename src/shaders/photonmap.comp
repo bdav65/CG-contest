@@ -226,7 +226,7 @@ Hit intersect_scene(Ray ray) {
 // https://arxiv.org/pdf/0912.4540
 // https://medium.com/@vagnerseibert/distributing-points-on-a-sphere-6b593cc05b42
 vec3 sphere_direction(uint i, uint n) {
-    float k = i + noise() - 0.5;
+    float k = i + 0.5;
 
     float phi = acos(1.0 - (2.0 * k) / n);
     float theta = PI * (1.0 + sqrt(5.0)) * k;
@@ -254,12 +254,7 @@ Photon photon_hit(inout Ray ray, Hit hit) {
     if (r <= mat.kd) { // diffuse reflection
         ray.color *= mat.color;
         ray.origin = p.location;
-
-        ray.direction.x = noise();
-        ray.direction.y = noise();
-        ray.direction.z = noise();
-
-        ray.direction = normalize(ray.direction);
+        ray.direction = sphere_direction(int(noise() * 999.9), 1000);
 
         if (dot(ray.direction, hit.normal) <= EPSILON) {
             ray.direction *= -1;
@@ -323,5 +318,6 @@ void main() {
         return;
     }
 
+    seed = gl_GlobalInvocationID.x;
     shoot_photon(i);
 }
