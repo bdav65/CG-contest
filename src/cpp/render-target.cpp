@@ -97,7 +97,7 @@ WindowRenderTarget::WindowRenderTarget(
     // Create synchronization primitives
     VkSemaphoreCreateInfo semaphoreInfo {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
-    for (int idx = 0; idx < framebuffers.size(); idx++) {
+    for (size_t idx = 0; idx < framebuffers.size(); idx++) {
         VkSemaphore semaphore;
         vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore);
         computeDoneSemaphores.push_back(semaphore);
@@ -107,7 +107,7 @@ WindowRenderTarget::WindowRenderTarget(
 WindowRenderTarget::~WindowRenderTarget() {
     vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
 
-    for (int idx = 0; idx < framebuffers.size(); idx++)
+    for (size_t idx = 0; idx < framebuffers.size(); idx++)
         vkDestroySemaphore(device, computeDoneSemaphores[idx], nullptr);
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);

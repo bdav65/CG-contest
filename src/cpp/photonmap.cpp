@@ -131,7 +131,7 @@ MappedStorageBuffer PhotonMap::compute() {
     Photon *raw = static_cast<Photon *>(photons.mapped_data);
     int non_miss = 0;
 
-    for (int i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
+    for (size_t i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
         if (raw[i].axis >= 0) {
             raw[non_miss] = raw[i];
             non_miss++;

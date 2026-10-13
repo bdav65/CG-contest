@@ -248,7 +248,7 @@ std::tuple<VkDescriptorSet, VkDescriptorSetLayout> VulkanHelper::createDescripto
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.dstSet = descriptorSet;
 
-    for (int j = 0; j < descriptors.size(); j++) {
+    for (size_t j = 0; j < descriptors.size(); j++) {
         ResourceDescriptor descriptor = descriptors[j];
 
         descriptorWrite.dstBinding = j;
