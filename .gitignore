@@ -6,3 +6,4 @@ output.png
 .vscode
 *.py
 vgcore.*
+gmon.out
