@@ -1,19 +1,20 @@
 #include "raytracer.hpp"
 
+
 #ifdef FRAMETIME
 #include <chrono>
 #endif
 
 
-RayTracer::RayTracer(Scene &scene, bool headless, std::vector<Photon> const &photons):
+RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, MappedStorageBuffer photons):
     scene(scene),
-    vulkanHelper(headless),
+    vulkanHelper(helper),
     camera(vulkanHelper, sizeof(Camera)),
     objects(vulkanHelper, scene.getObjects()),
     spheres(vulkanHelper, scene.getSpheres()),
     triangles(vulkanHelper, scene.getTriangles()),
     lights(vulkanHelper, scene.getLights()),
-    photons(vulkanHelper, photons)
+    photons(photons)
 {
    createResources();
    createPipeline();

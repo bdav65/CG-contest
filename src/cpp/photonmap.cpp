@@ -1,6 +1,6 @@
 #include "photonmap.hpp"
 
-#define LIGHT_PHOTONS 10000
+#define LIGHT_PHOTONS 5000
 #define BOUNCES 4
 
 #define DEBUG
@@ -39,15 +39,15 @@ size_t PhotonMap::photonMapCapacity() {
 }
 
 
-PhotonMap::PhotonMap(Scene &scene):
+PhotonMap::PhotonMap(Scene &scene, VulkanHelper &helper):
     scene(scene),
-    vulkanHelper(true),
+    vulkanHelper(helper),
     config(vulkanHelper, sizeof(PhotonConfig)),
     objects(vulkanHelper, scene.getObjects()),
     spheres(vulkanHelper, scene.getSpheres()),
     triangles(vulkanHelper, scene.getTriangles()),
     lights(vulkanHelper, scene.getLights()),
-    photons(vulkanHelper, photonMapCapacity())
+    photons(vulkanHelper, 16 + photonMapCapacity())
 {
     createResources();
     createPipeline();
@@ -84,7 +84,7 @@ void PhotonMap::createPipeline() {
     this->pipelineLayout = pipelineLayout;
 }
 
-std::vector<Photon> PhotonMap::compute() {
+MappedStorageBuffer PhotonMap::compute() {
     #ifdef DEBUG
     auto start = std::chrono::high_resolution_clock::now();
     #endif
@@ -128,23 +128,25 @@ std::vector<Photon> PhotonMap::compute() {
 
     std::vector<Photon> kd;
 
+    Photon *raw = static_cast<Photon *>(photons.mapped_data);
+    int non_miss = 0;
+
     for (int i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
-        Photon p = ((Photon *)photons.mapped)[i];
-        
-        if (p.color != glm::vec3{0, 0, 0}) {
-            kd.push_back(p);
+        if (raw[i].axis >= 0) {
+            raw[non_miss] = raw[i];
+            non_miss++;
         }
     }
 
-    kdBalance(kd);
+    memcpy(photons.mapped_size, &non_miss, sizeof(int));
 
     #ifdef DEBUG
     stop = std::chrono::high_resolution_clock::now();
     duration = duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << "Constructed kd-tree (" << kd.size() << " photons) in " << duration.count() << " microseconds" << std::endl;
+    std::cout << "Reduced " << non_miss << " photons in " << duration.count() << " microseconds" << std::endl;
     #endif
 
-    return kd;
+    return photons;
 }
 
 
@@ -189,11 +191,6 @@ static void kdBalanceRecursive(std::vector<Photon> &ps, int l, int r) {
 }
 
 
-void PhotonMap::kdBalance(std::vector<Photon> &ps) {
-    kdBalanceRecursive(ps, 0, ps.size());
-}
-
-
 PhotonMap::~PhotonMap() {
     std::cout << "Destroying photon map Vulkan context\n";
 
@@ -204,10 +201,10 @@ PhotonMap::~PhotonMap() {
     objects.destroy(); // these could be reused in the raytracer
     spheres.destroy();
     triangles.destroy();
-    photons.destroy();
+    lights.destroy();
 
-    vkDestroyDescriptorSetLayout(device, this->descriptorSetLayout, nullptr); 
-    vkDestroyPipelineLayout(device, this->pipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr); 
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyShaderModule(device, shaderModule, nullptr);
-    vkDestroyPipeline(device, this->pipeline, nullptr);
+    vkDestroyPipeline(device, pipeline, nullptr);
 }

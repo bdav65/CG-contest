@@ -20,6 +20,8 @@ struct MappedStorageBuffer {
     VulkanHelper &helper;
     VkBuffer buffer;
     void *mapped;
+    void *mapped_size;
+    void *mapped_data;
     VkDeviceMemory memory;
 
     void setDescriptor(ResourceDescriptor &descriptor);

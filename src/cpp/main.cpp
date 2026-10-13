@@ -17,15 +17,16 @@ int main(int argc, char *argv[]) {
     Scene scene{argv[1]};
     bool headless = argc == 3;
 
+    VulkanHelper helper(headless);
 
     // create the photon map for the scene
-    std::vector<Photon> photons = [&]{
-        PhotonMap photonMap {scene};
+    MappedStorageBuffer photons = [&]{
+        PhotonMap photonMap {scene, helper};
         return photonMap.compute();
     }();
 
     // pass the scene and args into the raytracer
-    RayTracer raytracer{scene, headless, photons};
+    RayTracer raytracer{scene, helper, photons};
     raytracer.run();
 
     return EXIT_SUCCESS;

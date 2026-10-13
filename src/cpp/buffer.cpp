@@ -49,6 +49,9 @@ MappedStorageBuffer::MappedStorageBuffer(VulkanHelper &helper, size_t capacity):
     memory = helper.allocateBufferMemory(buffer);
 
     vkMapMemory(helper.getDevice(), memory, 0, capacity, 0, &mapped);
+
+    mapped_size = mapped;
+    mapped_data = static_cast<char *>(mapped) + 16;
 }
 
 

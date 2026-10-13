@@ -2,8 +2,10 @@
 
 using namespace vkutil;
 
-VulkanHelper::VulkanHelper(bool headless)
-    : headless(headless) {
+VulkanHelper::VulkanHelper(bool headless):
+    headless(headless),
+    descriptorPool(nullptr)
+{
     initializeVulkan();
 }
 
@@ -200,6 +202,10 @@ std::tuple<VkDescriptorSet, VkDescriptorSetLayout> VulkanHelper::createDescripto
         .poolSizeCount = static_cast<uint32_t>(descriptors.size()),
         .pPoolSizes = poolSizes.data(),
     };
+
+    if (descriptorPool != nullptr) {
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+    }
 
     vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
 
