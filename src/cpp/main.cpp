@@ -1,5 +1,6 @@
 #include "main.hpp"
 
+
 int main(int argc, char *argv[]) {
     std::cout << "Computer Graphics - Ray tracer\n\n";
 
@@ -16,10 +17,16 @@ int main(int argc, char *argv[]) {
     Scene scene{argv[1]};
     bool headless = argc == 3;
 
-    // pass the scene and args into the raytracer
-    RayTracer raytracer{scene, headless};
+    VulkanHelper vulkanHelper {headless};
 
-    raytracer.run();
+    // create the photon map for the scene
+    PhotonMap photonMap {scene, vulkanHelper};
+    auto x = photonMap.compute();
+
+    // pass the scene and args into the raytracer
+    // RayTracer raytracer{scene, headless};
+
+    // raytracer.run();
 
     return EXIT_SUCCESS;
 }
