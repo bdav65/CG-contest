@@ -1,8 +1,5 @@
 #include "vulkan.hpp"
 
-#include "raytracer.hpp"
-#include "lode/lodepng.hpp"
-
 using namespace vkutil;
 
 VulkanHelper::VulkanHelper(bool headless)
@@ -553,8 +550,8 @@ VkDevice vkutil::createLogicalDevice(VkPhysicalDevice gpu, uint32_t queueFamily,
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
-        .enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size()),
-        .ppEnabledLayerNames = VALIDATION_LAYERS.data(),
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = nullptr,
         .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
         .ppEnabledExtensionNames = deviceExtensions.data(),
         .pEnabledFeatures = {},
