@@ -39,15 +39,15 @@ size_t PhotonMap::photonMapCapacity() {
 }
 
 
-PhotonMap::PhotonMap(Scene &scene, VulkanHelper &helper):
+PhotonMap::PhotonMap(Scene &scene):
     scene(scene),
-    vulkanHelper(helper),
-    config(helper, sizeof(PhotonConfig)),
-    objects(helper, scene.getObjects()),
-    spheres(helper, scene.getSpheres()),
-    triangles(helper, scene.getTriangles()),
-    lights(helper, scene.getLights()),
-    photons(helper, photonMapCapacity())
+    vulkanHelper(true),
+    config(vulkanHelper, sizeof(PhotonConfig)),
+    objects(vulkanHelper, scene.getObjects()),
+    spheres(vulkanHelper, scene.getSpheres()),
+    triangles(vulkanHelper, scene.getTriangles()),
+    lights(vulkanHelper, scene.getLights()),
+    photons(vulkanHelper, photonMapCapacity())
 {
     createResources();
     createPipeline();
@@ -144,7 +144,7 @@ std::vector<Photon> PhotonMap::compute() {
     std::cout << "Constructed kd-tree (" << kd.size() << " photons) in " << duration.count() << " microseconds" << std::endl;
     #endif
 
-    return {};
+    return kd;
 }
 
 
@@ -195,6 +195,8 @@ void PhotonMap::kdBalance(std::vector<Photon> &ps) {
 
 
 PhotonMap::~PhotonMap() {
+    std::cout << "Destroying photon map Vulkan context\n";
+
     VkDevice device = vulkanHelper.getDevice();
     vkDeviceWaitIdle(device); // wait until all submitted stuff is done
 
@@ -206,6 +208,6 @@ PhotonMap::~PhotonMap() {
 
     vkDestroyDescriptorSetLayout(device, this->descriptorSetLayout, nullptr); 
     vkDestroyPipelineLayout(device, this->pipelineLayout, nullptr);
-    vkDestroyShaderModule(device, shaderModule, nullptr); 
+    vkDestroyShaderModule(device, shaderModule, nullptr);
     vkDestroyPipeline(device, this->pipeline, nullptr);
 }

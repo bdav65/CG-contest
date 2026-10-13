@@ -3,19 +3,21 @@
 #include "vulkan.hpp"
 #include "scene.hpp"
 #include "buffer.hpp"
+#include "photonmap.hpp"
 
 
 class RayTracer {
     bool headless;
-    Scene scene;
+    Scene &scene;
     VulkanHelper vulkanHelper;
  
     // Resources
-    VkBuffer uniformBuffer;
-    void *uniformBufferMap;
-    
-    // object, sphere, triangle, light
-    std::vector<StorageBuffer> storageBuffers;
+    UniformBuffer camera;
+    StorageBuffer objects;
+    StorageBuffer spheres;
+    StorageBuffer triangles;
+    StorageBuffer lights;
+    StorageBuffer photons;
 
     VkImage outputImage;
     VkImage textureImage;
@@ -30,7 +32,7 @@ class RayTracer {
     VkPipelineLayout pipelineLayout;
 
     public:
-        RayTracer(Scene scene, bool headless);
+        RayTracer(Scene &scene, bool headless, std::vector<Photon> const &photons);
         void run();
         ~RayTracer();
 

@@ -226,7 +226,7 @@ Hit intersect_scene(Ray ray) {
 // https://arxiv.org/pdf/0912.4540
 // https://medium.com/@vagnerseibert/distributing-points-on-a-sphere-6b593cc05b42
 vec3 sphere_direction(uint i, uint n) {
-    float k = i + 0.5;
+    float k = i + noise() - 0.5;
 
     float phi = acos(1.0 - (2.0 * k) / n);
     float theta = PI * (1.0 + sqrt(5.0)) * k;
@@ -254,7 +254,12 @@ Photon photon_hit(inout Ray ray, Hit hit) {
     if (r <= mat.kd) { // diffuse reflection
         ray.color *= mat.color;
         ray.origin = p.location;
-        ray.direction = normalize(vec3(noise(), noise(), noise()));
+
+        ray.direction.x = noise();
+        ray.direction.y = noise();
+        ray.direction.z = noise();
+
+        ray.direction = normalize(ray.direction);
 
         if (dot(ray.direction, hit.normal) <= EPSILON) {
             ray.direction *= -1;
@@ -263,17 +268,18 @@ Photon photon_hit(inout Ray ray, Hit hit) {
         return p;
     }
 
-    if (r <= mat.kd + mat.ks) { // specular reflection
+    else if (r <= mat.kd + mat.ks) { // specular reflection
         ray.color *= mat.color;
         ray.origin = p.location;
         ray.direction = reflect(ray.direction, hit.normal);
 
         return MISS;
+    } else {
+        // absorption/refraction (todo)
+        ray.strength = 0.0;
     }
 
-    // absorption/refraction (todo)
-    ray.strength = 0.0;
-    return p;
+    return mat.ks > EPSILON ? MISS : p;
 }
 
 

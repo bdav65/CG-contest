@@ -6,6 +6,7 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
+#define K 4
 
 uint seed;
 
@@ -77,6 +78,15 @@ struct Ray {
     vec3 direction;
 };
 
+
+struct Photon {
+    vec3 color;
+    vec3 incident;
+    vec3 location;
+    int axis;
+};
+
+
 vec3 ray_at(Ray ray, float t) {
     return ray.origin + t * ray.direction;
 }
@@ -95,27 +105,38 @@ layout(std430, binding = 0) readonly uniform Camera {
     int bounces;
 } camera;
 
+
 layout(std430, binding = 1) readonly buffer ObjectBuffer {
     int object_amount;
     Object objects[];
 };
+
 
 layout(std430, binding = 2) readonly buffer SphereBuffer {
     int sphere_amount;
     Sphere spheres[];
 };
 
+
 layout(std430, binding = 3) readonly buffer TriangleBuffer {
     int triangle_amount;
     Triangle triangles[];
 };
+
 
 layout(std430, binding = 4) readonly buffer LightBuffer {
     int light_amount;
     Light lights[];
 };
 
-layout(binding = 5) writeonly uniform image2D output_image;
+
+layout(binding = 5) readonly buffer PhotonBuffer {
+    int photon_amount;
+    Photon photons[];
+};
+
+
+layout(binding = 6) writeonly uniform image2D output_image;
 
 //////////////////////////////////////////
 //////////////// FUNCTIONS ///////////////

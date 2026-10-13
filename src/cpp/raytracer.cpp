@@ -5,8 +5,15 @@
 #endif
 
 
-RayTracer::RayTracer(Scene scene, bool headless)
-    : headless(headless), scene(std::move(scene)), vulkanHelper(VulkanHelper(headless))
+RayTracer::RayTracer(Scene &scene, bool headless, std::vector<Photon> const &photons):
+    scene(scene),
+    vulkanHelper(headless),
+    camera(vulkanHelper, sizeof(Camera)),
+    objects(vulkanHelper, scene.getObjects()),
+    spheres(vulkanHelper, scene.getSpheres()),
+    triangles(vulkanHelper, scene.getTriangles()),
+    lights(vulkanHelper, scene.getLights()),
+    photons(vulkanHelper, photons)
 {
    createResources();
    createPipeline();
@@ -31,30 +38,18 @@ void RayTracer::run() {
 
 
 void RayTracer::createResources() {
-    size_t uniformBufferSize = sizeof(Camera);
     VkExtent2D outputSize = vulkanHelper.outputSize();
     auto [textureData, textureSize] = readImage(scene.texturePath());
 
-    // First, we create the buffers
-    uniformBuffer = vulkanHelper.createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uniformBufferSize);
-
-    storageBuffers.push_back(StorageBuffer(vulkanHelper, scene.getObjects()));
-    storageBuffers.push_back(StorageBuffer(vulkanHelper, scene.getSpheres()));
-    storageBuffers.push_back(StorageBuffer(vulkanHelper, scene.getTriangles()));
-    storageBuffers.push_back(StorageBuffer(vulkanHelper, scene.getLights()));
-
+    // Create images
     outputImage = vulkanHelper.createImage(VK_IMAGE_USAGE_STORAGE_BIT, outputSize);
     textureImage = vulkanHelper.createImage(VK_IMAGE_USAGE_SAMPLED_BIT, textureSize);
     textureSampler = vulkanHelper.createSampler(VK_FILTER_LINEAR);
 
-    // Then, now that we have the buffers, we need to allocate GPU memory for them
-    VkDeviceMemory uniformBufferMemory = vulkanHelper.allocateBufferMemory(uniformBuffer);
+    // Memory
     VkDeviceMemory outputImageMemory = vulkanHelper.allocateImageMemory(outputImage);
     VkDeviceMemory textureImageMemory = vulkanHelper.allocateImageMemory(textureImage);
-    this->allocations = {uniformBufferMemory, outputImageMemory, textureImageMemory};
-
-    // Finally, we map the GPU memory to some CPU-visible memory so we can write to them
-    vkMapMemory(vulkanHelper.getDevice(), uniformBufferMemory, 0, uniformBufferSize, 0, &uniformBufferMap);
+    this->allocations = {outputImageMemory, textureImageMemory};
 
     // Write texture
     vulkanHelper.uploadToImage(textureData, textureImage, textureSize);
@@ -63,25 +58,21 @@ void RayTracer::createResources() {
 
 void RayTracer::createPipeline() {
     // Create shader module
-    std::vector<char> shaderCode = readFile("./build/shaders/raytracer.comp.spv");
+    std::vector<char> shaderCode = readFile("./build/shaders/viewphotons.comp.spv");
 	shaderModule = vulkanHelper.createShaderModule(shaderCode);
 
     // Create descriptor set
     std::vector<ResourceDescriptor> descriptors {7};
 
-    descriptors[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptors[0].buffer = uniformBuffer;
+    camera.setDescriptor(descriptors[0]);
+    objects.setDescriptor(descriptors[1]);
+    spheres.setDescriptor(descriptors[2]);
+    triangles.setDescriptor(descriptors[3]);
+    lights.setDescriptor(descriptors[4]);
+    photons.setDescriptor(descriptors[5]);
 
-    for (int i = 0; i < storageBuffers.size(); i++) {
-        storageBuffers[i].setDescriptor(descriptors[i + 1]);
-    }
-
-    descriptors[5].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptors[5].image = outputImage;
-
-    descriptors[6].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptors[6].image = textureImage;
-    descriptors[6].sampler = textureSampler;
+    descriptors[6].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptors[6].image = outputImage;
 
     auto [descriptorSet, descriptorLayout] = vulkanHelper.createDescriptorSet(descriptors);
     this->descriptorSet = descriptorSet;
@@ -97,7 +88,8 @@ void RayTracer::createPipeline() {
 void RayTracer::drawFrame() {
 	// Update uniform buffer
     VkExtent2D outputSize = vulkanHelper.outputSize();
-    Camera camera {
+
+    Camera currentCamera {
         scene.cameraOrigin(),
         4.0,
         glm::ivec2(outputSize.width, outputSize.height),
@@ -105,7 +97,8 @@ void RayTracer::drawFrame() {
         scene.renderShadows(),
         scene.maxBounces(),
     };
-	memcpy(uniformBufferMap, &camera, sizeof(Camera));
+
+	memcpy(camera.mapped, &currentCamera, sizeof(Camera));
     
     // Get the command buffer
     VkCommandBuffer commandBuffer = vulkanHelper.getCommandBuffer();
@@ -135,11 +128,12 @@ RayTracer::~RayTracer() {
     VkDevice device = vulkanHelper.getDevice();
     vkDeviceWaitIdle(device); // wait until all submitted stuff is done
 
-    vkDestroyBuffer(device, this->uniformBuffer, nullptr);
-
-    for (auto storage : storageBuffers) {
-        storage.destroy();
-    }
+    camera.destroy();
+    objects.destroy();
+    spheres.destroy();
+    triangles.destroy();
+    lights.destroy();
+    photons.destroy();
 
     vkDestroyImage(device, this->outputImage, nullptr);
     vkDestroyImage(device, this->textureImage, nullptr);

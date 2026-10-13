@@ -15,7 +15,7 @@ struct Photon {
 
 class PhotonMap {
     Scene &scene;
-    VulkanHelper &vulkanHelper;
+    VulkanHelper vulkanHelper;
  
     UniformBuffer config;
     StorageBuffer objects;
@@ -32,7 +32,7 @@ class PhotonMap {
     VkPipelineLayout pipelineLayout;
 
     public:
-        PhotonMap(Scene &scene, VulkanHelper &vulkanHelper);
+        PhotonMap(Scene &scene);
         [[nodiscard]] std::vector<Photon> compute();
         ~PhotonMap();
 
