@@ -12,11 +12,11 @@ class RayTracer {
  
     // Resources
     UniformBuffer camera;
-    StorageBuffer objects;
-    StorageBuffer spheres;
-    StorageBuffer triangles;
-    StorageBuffer lights;
-    MappedStorageBuffer photons;
+    InputBuffer objects;
+    InputBuffer spheres;
+    InputBuffer triangles;
+    InputBuffer lights;
+    InputBuffer photons;
 
     VkImage outputImage;
     VkImage textureImage;
@@ -31,7 +31,7 @@ class RayTracer {
     VkPipelineLayout pipelineLayout;
 
     public:
-        RayTracer(Scene &scene, VulkanHelper &helper, MappedStorageBuffer photons);
+        RayTracer(Scene &scene, VulkanHelper &helper, StagingBuffer &photons);
         void run();
         ~RayTracer();
 

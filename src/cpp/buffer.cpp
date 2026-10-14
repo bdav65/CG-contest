@@ -23,30 +23,31 @@ UniformBuffer::UniformBuffer(VulkanHelper &helper, size_t capacity):
     helper(helper)
 {
     buffer = helper.createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, capacity);
-    memory = helper.allocateBufferMemory(buffer);
+    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     vkMapMemory(helper.getDevice(), memory, 0, capacity, 0, &mapped);
 }
 
 
-void MappedStorageBuffer::setDescriptor(ResourceDescriptor &descriptor) {
+void StagingBuffer::setDescriptor(ResourceDescriptor &descriptor) {
     descriptor.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     descriptor.buffer = buffer;
 }
 
 
-void MappedStorageBuffer::destroy() {
+void StagingBuffer::destroy() {
     vkUnmapMemory(helper.getDevice(), memory);
     vkDestroyBuffer(helper.getDevice(), buffer, nullptr);
     vkFreeMemory(helper.getDevice(), memory, nullptr);
 }
 
 
-MappedStorageBuffer::MappedStorageBuffer(VulkanHelper &helper, size_t capacity):
-    helper(helper)
+StagingBuffer::StagingBuffer(VulkanHelper &helper, size_t capacity):
+    helper(helper),
+    capacity(capacity)
 {
-    buffer = helper.createBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, capacity);
-    memory = helper.allocateBufferMemory(buffer);
+    buffer = helper.createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, capacity);
+    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     vkMapMemory(helper.getDevice(), memory, 0, capacity, 0, &mapped);
 
@@ -55,33 +56,87 @@ MappedStorageBuffer::MappedStorageBuffer(VulkanHelper &helper, size_t capacity):
 }
 
 
-void StorageBuffer::setDescriptor(ResourceDescriptor &descriptor) {
+void StagingBuffer::initialize(void const *data, int n, int size, VkBufferUsageFlags flags) {
+    capacity = 16 + n * size;
+
+    buffer = helper.createBuffer(flags, capacity);
+    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    vkMapMemory(helper.getDevice(), memory, 0, capacity, 0, &mapped);
+
+    memcpy(mapped, &n, sizeof(int));
+    memcpy(((char *)mapped + 16), data, n * size);
+
+    mapped_size = mapped;
+    mapped_data = static_cast<char *>(mapped) + 16;
+}
+
+
+void InputBuffer::setDescriptor(ResourceDescriptor &descriptor) {
     descriptor.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     descriptor.buffer = buffer;
 }
 
 
-void StorageBuffer::destroy() {
+void InputBuffer::destroy() {
     vkDestroyBuffer(helper.getDevice(), buffer, nullptr);
     vkFreeMemory(helper.getDevice(), memory, nullptr);
+};
+
+
+void InputBuffer::initialize(void const *data, int n, int size) {
+    std::cout << "Initializing InputBuffer" << std::endl;
+
+    StagingBuffer staging {helper, data, n, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
+
+    copyData(staging);
+    staging.destroy();
 }
 
 
-void StorageBuffer::initialize(void const *data, int n, int size) {
-    int capacity = 16 + n * size;
+void InputBuffer::copyData(StagingBuffer const &data) {
+    std::cout << "Copying staging buffer data into InputBuffer" << std::endl;
 
-    buffer = helper.createBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, capacity);
-    memory = helper.allocateBufferMemory(buffer);
+    buffer = helper.createBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, data.getCapacity());
+    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    void *bufferMap;
+    vkutil::runSingleTimeCommand(helper.device, helper.commandPool, helper.computeQueue, [&](auto commandBuffer){
+        VkBufferCopy region {0, 0, static_cast<VkDeviceSize>(data.getCapacity())};
+        vkCmdCopyBuffer(commandBuffer, data.buffer, buffer, 1, &region);
+    });
+}
 
-    vkMapMemory(helper.getDevice(), memory, 0, capacity, 0, &bufferMap);
 
-    memcpy(bufferMap, &n, sizeof(int));
-    memcpy(((char *)bufferMap + 16), data, n * size);
+void OutputBuffer::setDescriptor(ResourceDescriptor &descriptor) {
+    descriptor.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptor.buffer = buffer;
+}
 
-    vkUnmapMemory(helper.getDevice(), memory);
 
+void OutputBuffer::destroy() {
+    vkDestroyBuffer(helper.getDevice(), buffer, nullptr);
+    vkFreeMemory(helper.getDevice(), memory, nullptr);
+};
+
+
+StagingBuffer OutputBuffer::readBack() {
+    StagingBuffer staging {helper, capacity};
+
+    vkutil::runSingleTimeCommand(helper.device, helper.commandPool, helper.computeQueue, [&](auto commandBuffer){
+        VkBufferCopy region {0, 0, capacity};
+        vkCmdCopyBuffer(commandBuffer, buffer, staging.buffer, 1, &region);
+    });
+
+    return staging;
+}
+
+
+OutputBuffer::OutputBuffer(VulkanHelper &helper, size_t capacity):
+    helper(helper),
+    capacity(capacity)
+{
+    buffer = helper.createBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, capacity);
+    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
 

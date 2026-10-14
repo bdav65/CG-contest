@@ -132,11 +132,10 @@ VkSampler VulkanHelper::createSampler(VkFilter filter) {
     return vkutil::createSampler(device, filter);
 }
 
-VkDeviceMemory VulkanHelper::allocateBufferMemory(VkBuffer const &buffer) {
+VkDeviceMemory VulkanHelper::allocateBufferMemory(VkBuffer const &buffer, VkMemoryPropertyFlags properties) {
     VkMemoryRequirements memReqs;
     vkGetBufferMemoryRequirements(device, buffer, &memReqs);
 
-    VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     VkDeviceMemory memory = allocateMemory(gpu, device, memReqs, properties);
     vkBindBufferMemory(device, buffer, memory, 0);
 
@@ -293,7 +292,7 @@ void VulkanHelper::uploadToImage(std::vector<unsigned char> data, VkImage image,
     size_t size = 4 * imageExtent.width * imageExtent.height;
 
     VkBuffer buffer = createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size);
-    VkDeviceMemory bufferMemory = allocateBufferMemory(buffer);
+    VkDeviceMemory bufferMemory = allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     void *bufferMemoryMap;
     vkMapMemory(device, bufferMemory, 0, size, 0, &bufferMemoryMap);
 

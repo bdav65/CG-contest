@@ -18,11 +18,11 @@ class PhotonMap {
     VulkanHelper &vulkanHelper;
  
     UniformBuffer config;
-    StorageBuffer objects;
-    StorageBuffer spheres;
-    StorageBuffer triangles;
-    StorageBuffer lights;
-    MappedStorageBuffer photons;
+    InputBuffer objects;
+    InputBuffer spheres;
+    InputBuffer triangles;
+    InputBuffer lights;
+    OutputBuffer photons;
 
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -33,7 +33,7 @@ class PhotonMap {
 
     public:
         PhotonMap(Scene &scene, VulkanHelper &helper);
-        [[nodiscard]] MappedStorageBuffer compute();
+        [[nodiscard]] StagingBuffer compute();
         ~PhotonMap();
 
     private:

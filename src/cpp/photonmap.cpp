@@ -1,27 +1,9 @@
 #include "photonmap.hpp"
-#include "kdify.hpp"
+// #include "kdify.hpp"
 #include "timer.hpp"
 
-#define LIGHT_PHOTONS 100000
+#define LIGHT_PHOTONS 1000
 #define BOUNCES 4
-
-#define DEBUG
-
-#ifdef DEBUG
-#include <iostream>
-
-
-static std::ostream &operator<<(std::ostream &os, const glm::vec3 &v) {
-    return os << '[' << v.x << ", " << v.y << ", " << v.z << ']';
-}
-
-
-static std::ostream &operator<<(std::ostream &os, const Photon &p) {
-    return os << "Photon {" << p.color << ", " << p.incident << ", " << p.location << ", " << p.axis << '}';
-}
-
-#endif
-
 
 
 struct PhotonConfig {
@@ -86,7 +68,7 @@ void PhotonMap::createPipeline() {
 }
 
 
-MappedStorageBuffer PhotonMap::compute() {
+StagingBuffer PhotonMap::compute() {
     Timer steps;
     Timer total;
 
@@ -122,29 +104,31 @@ MappedStorageBuffer PhotonMap::compute() {
 
     steps.log(std::format("Finished tracing {} photons", photonMapCapacity() / sizeof(Photon)));
 
-    std::vector<Photon> hits;
-    Photon *raw = static_cast<Photon *>(photons.mapped_data);
+    StagingBuffer photonData = photons.readBack();
 
-    for (size_t i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
-        if (raw[i].axis >= 0) {
-            hits.push_back(raw[i]);
-        }
-    }
+    // std::vector<Photon> hits;
+    // Photon *raw = static_cast<Photon *>(photons.mapped_data);
 
-    std::cout << "log: Cleared miss photons, " << hits.size() << " photons remaining\n";
-    steps.log("Copied photon data to RAM");
+    // for (size_t i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
+    //     if (raw[i].axis >= 0) {
+    //         hits.push_back(raw[i]);
+    //     }
+    // }
 
-    kdify(hits.data(), hits.size());
+    // std::cout << "log: Cleared miss photons, " << hits.size() << " photons remaining\n";
+    steps.log("Copied photon data to readable memory");
 
-    steps.log("Constructed KD-tree");
+    // kdify(hits.data(), hits.size());
 
-    photons.setSize(hits.size());
-    memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
+    // steps.log("Constructed KD-tree");
+
+    // photons.setSize(hits.size());
+    // memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
     
-    steps.log("Sent back photon data to GPU");
-    total.log("Finished preparing the photon map");
+    // steps.log("Sent back photon data to GPU");
+    total.log(std::format("Finished preparing the photon map (data in {}, size {})", (void *)photonData.buffer, photonData.getCapacity()));
 
-    return photons;
+    return photonData;
 }
 
 
@@ -157,6 +141,7 @@ PhotonMap::~PhotonMap() {
     spheres.destroy();
     triangles.destroy();
     lights.destroy();
+    photons.destroy();
 
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr); 
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

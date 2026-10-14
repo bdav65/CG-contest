@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     VulkanHelper helper(headless);
 
     // create the photon map for the scene
-    MappedStorageBuffer photons = [&]{
+    StagingBuffer photons = [&]{
         PhotonMap photonMap {scene, helper};
         return photonMap.compute();
     }();

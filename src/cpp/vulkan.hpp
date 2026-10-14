@@ -26,6 +26,7 @@ struct ResourceDescriptor {
 
 
 class VulkanHelper {
+    public:
     bool headless;
     std::unique_ptr<RenderTarget> renderTarget;
 
@@ -46,7 +47,6 @@ class VulkanHelper {
 
     void initializeVulkan();
 
-   public:
     VulkanHelper(bool headless);
 
     // Actions
@@ -67,7 +67,7 @@ class VulkanHelper {
     VkImage createImage(VkImageUsageFlags usage, VkExtent2D size);
     VkSampler createSampler(VkFilter filter);
 
-    VkDeviceMemory allocateBufferMemory(const VkBuffer &buffer);
+    VkDeviceMemory allocateBufferMemory(const VkBuffer &buffer, VkMemoryPropertyFlags properties);
     VkDeviceMemory allocateImageMemory(const VkImage &image);
 
     // Getters

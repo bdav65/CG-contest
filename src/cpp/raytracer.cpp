@@ -4,7 +4,7 @@
 #include <iostream>
 
 
-RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, MappedStorageBuffer photons):
+RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, StagingBuffer &_photons):
     scene(scene),
     vulkanHelper(helper),
     camera(vulkanHelper, sizeof(Camera)),
@@ -12,10 +12,11 @@ RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, MappedStorageBuffer pho
     spheres(vulkanHelper, scene.getSpheres()),
     triangles(vulkanHelper, scene.getTriangles()),
     lights(vulkanHelper, scene.getLights()),
-    photons(photons)
+    photons(vulkanHelper, _photons)
 {
-   createResources();
-   createPipeline();
+    _photons.destroy();
+    createResources();
+    createPipeline();
 }
 
 
