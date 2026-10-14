@@ -87,6 +87,12 @@ struct Photon {
 };
 
 
+struct Heap {
+    uint n;
+    uint indices[K];
+};
+
+
 vec3 ray_at(Ray ray, float t) {
     return ray.origin + t * ray.direction;
 }
@@ -165,6 +171,32 @@ bool better_t(float t1, float t2) {
     bool c2 = t2 < EPSILON;
 
     return c1 ? false : (c2 ? true : t1 < t2);
+}
+
+
+Heap k_nearest_photons(vec3 location) {
+    Heap best;
+    best.n = 1;
+
+    // go downwards in k-d tree
+    uint i = 0;
+
+    while (i * 2 < photon_amount) {
+        Photon p = photons[i];
+
+        if (location[p.axis] < p.location[p.axis]) {
+            i = i * 2 + 1;
+        } else {
+            i = i * 2 + 2;
+        }
+    }
+
+    // we are at leaf node
+    best.indices[0] = i;
+
+    
+
+    return best;
 }
 
 

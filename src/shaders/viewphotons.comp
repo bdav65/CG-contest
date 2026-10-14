@@ -229,20 +229,97 @@ Hit intersect_scene(Ray ray) {
 }
 
 
-vec3 photon_color(vec3 location) {
-    vec3 color = vec3(0.0);
+float sqdist(vec3 from, vec3 to) {
+    vec3 d = to - from;
+    d *= d;
+    return d.x + d.y + d.z;
+}
 
-    const float R = 1.0;
+
+uint nearest_photon_naive(vec3 location) {
+    uint best_photon = 0;
+    float best_distance = 1.0 / 0.0;
 
     for (int i = 0; i < photon_amount; i++) {
         float d = distance(location, photons[i].location);
 
-        if (distance(location, photons[i].location) < R) {
-            color += photons[i].color;
+        if (d < best_distance) {
+            best_photon = i;
+            best_distance = d;
         }
     }
 
-    return color;
+    return best_photon;
+}
+
+
+uint nearest_photon(vec3 location) {
+    uint previous = 0;
+    uint current = 0;
+
+    uint best_photon = 0;
+    float best_distance = 1.0 / 0.0;
+
+    do {
+        // std::cout << "at photon " << current << '\n';
+        Photon p = photons[current];
+
+        // update best distance
+        float d = sqdist(location, p.location);
+
+        if (d < best_distance) {
+            best_photon = current;
+            best_distance = d;
+        }
+
+        uint good, bad;
+        uint parent = current > 0 ? (current - 1) / 2 : 0;
+
+        float axis_distance = location[p.axis] - p.location[p.axis];
+
+        if (axis_distance < 0) {
+            good = 2 * current + 1;
+            bad  = 2 * current + 2;
+        } else {
+            good = 2 * current + 2;
+            bad  = 2 * current + 1;
+        }
+        
+        if (good < photon_amount && previous <= current) { // came from parent (or started from root)
+            previous = current;
+            current = good;
+        } else if (previous == good) { // came from "good" subtree
+            if (bad < photon_amount && abs(axis_distance) < best_distance) { // there might be a better point on the "bad" side
+                previous = current;
+                current = bad;
+            } else {
+                previous = current;
+                current = parent;
+            }
+        } else { // came from "bad" subtree
+            previous = current;
+            current = parent;
+        }
+    } while (previous != current);
+
+    return best_photon;
+}
+
+
+vec3 photon_color(vec3 location) {
+    vec3 color = vec3(0.0);
+
+    // const float R = 1.0;
+
+    // for (int i = 0; i < photon_amount; i++) {
+    //     float d = distance(location, photons[i].location);
+
+    //     if (d < R) {
+    //         color += photons[i].color;
+    //     }
+    // }
+
+    return photons[nearest_photon(location)].color;
 }
 
 
