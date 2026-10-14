@@ -3,7 +3,7 @@
 
 #define EPSILON 0.0001
 #define PI 3.14159
-#define K 16
+#define K 1
 
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -389,7 +389,7 @@ vec3 photon_color2(vec3 location) {
         }
     }
 
-    return color;
+    return color / (PI * R * R);
 }
 
 

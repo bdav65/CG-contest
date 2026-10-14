@@ -2,7 +2,7 @@
 // #include "kdify.hpp"
 #include "timer.hpp"
 
-#define LIGHT_PHOTONS 1000
+#define LIGHT_PHOTONS 100000
 #define BOUNCES 4
 
 
@@ -44,7 +44,7 @@ void PhotonMap::createResources() {
 
 void PhotonMap::createPipeline() {
     // Create shader module
-    std::vector<char> shaderCode = readFile("./build/shaders/causticsmap.comp.spv");
+    std::vector<char> shaderCode = readFile("./build/shaders/photonmap.comp.spv");
 	shaderModule = vulkanHelper.createShaderModule(shaderCode);
 
     // Create descriptor set
@@ -106,17 +106,22 @@ StagingBuffer PhotonMap::compute() {
 
     StagingBuffer photonData = photons.readBack();
 
-    // std::vector<Photon> hits;
-    // Photon *raw = static_cast<Photon *>(photons.mapped_data);
+    Photon *raw = static_cast<Photon *>(photonData.mapped_data);
+    int hits = 0;
 
-    // for (size_t i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
-    //     if (raw[i].axis >= 0) {
-    //         hits.push_back(raw[i]);
-    //     }
-    // }
+    // std::vector<Photon> hits;
+
+    for (size_t i = 0; i < photonMapCapacity() / sizeof(Photon); i++) {
+        if (raw[i].axis >= 0) {
+            raw[hits] = raw[i];
+            hits++;
+        }
+    }
+
+    memcpy(photonData.mapped_size, &hits, sizeof(int));
 
     // std::cout << "log: Cleared miss photons, " << hits.size() << " photons remaining\n";
-    steps.log("Copied photon data to readable memory");
+    steps.log(std::format("Copied photon data to readable memory ({} hits)", hits));
 
     // kdify(hits.data(), hits.size());
 
@@ -126,7 +131,7 @@ StagingBuffer PhotonMap::compute() {
     // memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
     
     // steps.log("Sent back photon data to GPU");
-    total.log(std::format("Finished preparing the photon map (data in {}, size {})", (void *)photonData.buffer, photonData.getCapacity()));
+    total.log("Finished preparing the photon map");
 
     return photonData;
 }
