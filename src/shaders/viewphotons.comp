@@ -393,11 +393,33 @@ vec3 photon_color2(vec3 location) {
 }
 
 
+vec3 photon_color3(vec3 location) {
+    vec3 color = vec3(0.0);
+    float best_distance = 1.0 / 0.0;
+
+    for (int i = 0; i < photon_amount; i++) {
+        float d = distance(location, photons[i].location);
+
+        if (d < best_distance) {
+            color = photons[i].color;
+            best_distance = d;
+        }
+    }
+
+    return color;
+}
+
+
+vec3 photon_color4(vec3 location) {
+    return photons[nearest_photon(location)].color;
+}
+
+
 vec3 pixel_color(vec2 pixel_coords) {
     Ray ray = generate_ray(pixel_coords);
     Hit hit = intersect_scene(ray);
 
-    return hit.did_hit ? photon_color2(hit.location) : vec3(0, 0, 0);
+    return hit.did_hit ? photon_color4(hit.location) : vec3(0, 0, 0);
 }
 
 

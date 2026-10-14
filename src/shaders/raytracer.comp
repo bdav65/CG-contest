@@ -375,7 +375,7 @@ void phong_shading(inout Ray ray, Hit hit) {
         ray.origin = hit.location + BIAS * N;
         ray.direction = reflect(ray.direction, N);
     } else {
-        // ray.color += ray.strength * estimated_radiance(hit.location);
+        ray.color += ray.strength * estimated_radiance(hit.location);
         ray.strength = 0.0;
     }
 }

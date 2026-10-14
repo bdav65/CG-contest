@@ -47,7 +47,7 @@ StagingBuffer::StagingBuffer(VulkanHelper &helper, size_t capacity):
     capacity(capacity)
 {
     buffer = helper.createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, capacity);
-    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    memory = helper.allocateBufferMemory(buffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 
     vkMapMemory(helper.getDevice(), memory, 0, capacity, 0, &mapped);
 

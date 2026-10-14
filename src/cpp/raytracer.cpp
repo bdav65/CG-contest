@@ -56,7 +56,7 @@ void RayTracer::createResources() {
 
 void RayTracer::createPipeline() {
     // Create shader module
-    std::vector<char> shaderCode = readFile("./build/shaders/viewphotons.comp.spv");
+    std::vector<char> shaderCode = readFile("./build/shaders/raytracer.comp.spv");
 	shaderModule = vulkanHelper.createShaderModule(shaderCode);
 
     // Create descriptor set

@@ -1,8 +1,8 @@
 #include "photonmap.hpp"
-// #include "kdify.hpp"
+#include "kdify.hpp"
 #include "timer.hpp"
 
-#define LIGHT_PHOTONS 100000
+#define LIGHT_PHOTONS 50000
 #define BOUNCES 4
 
 
@@ -123,9 +123,9 @@ StagingBuffer PhotonMap::compute() {
     // std::cout << "log: Cleared miss photons, " << hits.size() << " photons remaining\n";
     steps.log(std::format("Copied photon data to readable memory ({} hits)", hits));
 
-    // kdify(hits.data(), hits.size());
+    kdify(raw, hits);
 
-    // steps.log("Constructed KD-tree");
+    steps.log("Constructed KD-tree");
 
     // photons.setSize(hits.size());
     // memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
