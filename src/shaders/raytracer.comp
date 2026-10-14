@@ -6,7 +6,7 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
-#define K 4
+#define K 16
 
 uint seed;
 
@@ -89,7 +89,8 @@ struct Photon {
 
 struct Heap {
     uint n;
-    uint indices[K];
+    uint photons[K];
+    float sqdists[K];
 };
 
 
@@ -165,38 +166,78 @@ Ray generate_ray(vec2 coord) {
 }
 
 
-// true if t1 is a better fit than t2
-bool better_t(float t1, float t2) {
-    bool c1 = t1 < EPSILON;
-    bool c2 = t2 < EPSILON;
+void heap_put(inout Heap h, uint p, float d) {
+    uint i = h.n;
 
-    return c1 ? false : (c2 ? true : t1 < t2);
-}
+    if (i < K) {
+        while (i > 0) {
+            uint p = (i - 1) / 2;
 
+            if (h.sqdists[p] < d) {
+                h.photons[i] = h.photons[p];
+                h.sqdists[i] = h.sqdists[p];
+                i = p;
+            } else {
+                break;
+            }
+        }
 
-Heap k_nearest_photons(vec3 location) {
-    Heap best;
-    best.n = 1;
+        h.photons[i] = p;
+        h.sqdists[i] = d;
 
-    // go downwards in k-d tree
-    uint i = 0;
+        h.n++;
+        return;
+    }
 
-    while (i * 2 < photon_amount) {
-        Photon p = photons[i];
+    if (h.sqdists[0] < d) {
+        return;
+    }
 
-        if (location[p.axis] < p.location[p.axis]) {
-            i = i * 2 + 1;
+    i = 0;
+
+    while (i * 2 < h.n) {
+        uint l = i * 2 + 1;
+        uint r = i * 2 + 2;
+
+        float dl = l < h.n ? h.sqdists[l] : -(1.0 / 0.0);
+        float dr = r < h.n ? h.sqdists[r] : -(1.0 / 0.0);
+
+        if (dl > dr && d < dl) {
+            h.photons[i] = h.photons[l];
+            h.sqdists[i] = dl;
+            i = l;
+        } else if (dl < dr && d < dr) {
+            h.photons[i] = h.photons[r];
+            h.sqdists[i] = dr;
+            i = r;
         } else {
-            i = i * 2 + 2;
+            break;
         }
     }
 
-    // we are at leaf node
-    best.indices[0] = i;
+    h.photons[i] = p;
+    h.sqdists[i] = d;
+}
 
-    
 
-    return best;
+vec3 estimated_radiance(vec3 location) {
+    vec3 color = vec3(0.0);
+
+    Heap nearest;
+    nearest.n = 0;
+
+    for (int i = 0; i < photon_amount; i++) {
+        vec3 d = location - photons[i].location;
+        d *= d;
+
+        heap_put(nearest, i, d.x + d.y + d.z);
+    }
+
+    for (int i = 0; i < nearest.n; i++) {
+        color += photons[nearest.photons[i]].color;
+    }
+
+    return color / (PI * nearest.sqdists[0]);
 }
 
 
@@ -328,9 +369,15 @@ void phong_shading(inout Ray ray, Hit hit) {
     }
 
     ray.color += ray.strength * (color * (mat.ka + mat.kd * diffuse) + mat.ks * specular);
-    ray.strength *= mat.ks;
-    ray.origin = hit.location + BIAS * N;
-    ray.direction = reflect(ray.direction, N);
+
+    if (mat.ks > EPSILON) {
+        ray.strength *= mat.ks;
+        ray.origin = hit.location + BIAS * N;
+        ray.direction = reflect(ray.direction, N);
+    } else {
+        ray.color += ray.strength * estimated_radiance(hit.location);
+        ray.strength = 0.0;
+    }
 }
 
 

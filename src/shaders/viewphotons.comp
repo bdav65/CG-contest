@@ -3,6 +3,7 @@
 
 #define EPSILON 0.0001
 #define PI 3.14159
+#define K 16
 
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -68,6 +69,13 @@ struct Photon {
     vec3 incident;
     vec3 location;
     int axis;
+};
+
+
+struct Heap {
+    uint n;
+    uint photons[K];
+    float sqdists[K];
 };
 
 
@@ -236,20 +244,70 @@ float sqdist(vec3 from, vec3 to) {
 }
 
 
-uint nearest_photon_naive(vec3 location) {
-    uint best_photon = 0;
-    float best_distance = 1.0 / 0.0;
+void heap_put(inout Heap h, uint p, float d) {
+    uint i = h.n;
 
-    for (int i = 0; i < photon_amount; i++) {
-        float d = distance(location, photons[i].location);
+    if (i < K) {
+        while (i > 0) {
+            uint p = (i - 1) / 2;
 
-        if (d < best_distance) {
-            best_photon = i;
-            best_distance = d;
+            if (h.sqdists[p] < d) {
+                h.photons[i] = h.photons[p];
+                h.sqdists[i] = h.sqdists[p];
+                i = p;
+            } else {
+                break;
+            }
+        }
+
+        h.photons[i] = p;
+        h.sqdists[i] = d;
+
+        h.n++;
+        return;
+    }
+
+    if (h.sqdists[0] < d) {
+        return;
+    }
+
+    i = 0;
+
+    while (i * 2 < h.n) {
+        uint l = i * 2 + 1;
+        uint r = i * 2 + 2;
+
+        float dl = l < h.n ? h.sqdists[l] : -(1.0 / 0.0);
+        float dr = r < h.n ? h.sqdists[r] : -(1.0 / 0.0);
+
+        if (dl > dr && d < dl) {
+            h.photons[i] = h.photons[l];
+            h.sqdists[i] = dl;
+            i = l;
+        } else if (dl < dr && d < dr) {
+            h.photons[i] = h.photons[r];
+            h.sqdists[i] = dr;
+            i = r;
+        } else {
+            break;
         }
     }
 
-    return best_photon;
+    h.photons[i] = p;
+    h.sqdists[i] = d;
+}
+
+
+Heap nearest_photons_naive(vec3 location) {
+    Heap results;
+    results.n = 0;
+
+    for (int i = 0; i < photon_amount; i++) {
+        float d = distance(location, photons[i].location);
+        heap_put(results, i, d);
+    }
+
+    return results;
 }
 
 
@@ -261,7 +319,6 @@ uint nearest_photon(vec3 location) {
     float best_distance = 1.0 / 0.0;
 
     do {
-        // std::cout << "at photon " << current << '\n';
         Photon p = photons[current];
 
         // update best distance
@@ -309,17 +366,30 @@ uint nearest_photon(vec3 location) {
 vec3 photon_color(vec3 location) {
     vec3 color = vec3(0.0);
 
-    // const float R = 1.0;
+    Heap nearest = nearest_photons_naive(location);
 
-    // for (int i = 0; i < photon_amount; i++) {
-    //     float d = distance(location, photons[i].location);
+    for (int i = 0; i < nearest.n; i++) {
+        color += photons[nearest.photons[i]].color;
+    }
 
-    //     if (d < R) {
-    //         color += photons[i].color;
-    //     }
-    // }
+    return color / nearest.n;
+}
 
-    return photons[nearest_photon(location)].color;
+
+vec3 photon_color2(vec3 location) {
+    vec3 color = vec3(0.0);
+
+    const float R = 1.0;
+
+    for (int i = 0; i < photon_amount; i++) {
+        float d = distance(location, photons[i].location);
+
+        if (distance(location, photons[i].location) < R) {
+            color += photons[i].color;
+        }
+    }
+
+    return color;
 }
 
 
@@ -327,7 +397,7 @@ vec3 pixel_color(vec2 pixel_coords) {
     Ray ray = generate_ray(pixel_coords);
     Hit hit = intersect_scene(ray);
 
-    return hit.did_hit ? photon_color(hit.location) : vec3(0, 0, 0);
+    return hit.did_hit ? photon_color2(hit.location) : vec3(0, 0, 0);
 }
 
 

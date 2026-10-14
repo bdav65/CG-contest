@@ -62,7 +62,7 @@ void PhotonMap::createResources() {
 
 void PhotonMap::createPipeline() {
     // Create shader module
-    std::vector<char> shaderCode = readFile("./build/shaders/photonmap.comp.spv");
+    std::vector<char> shaderCode = readFile("./build/shaders/causticsmap.comp.spv");
 	shaderModule = vulkanHelper.createShaderModule(shaderCode);
 
     // Create descriptor set
@@ -131,6 +131,7 @@ MappedStorageBuffer PhotonMap::compute() {
         }
     }
 
+    std::cout << "log: Cleared miss photons, " << hits.size() << " photons remaining\n";
     steps.log("Copied photon data to RAM");
 
     kdify(hits.data(), hits.size());

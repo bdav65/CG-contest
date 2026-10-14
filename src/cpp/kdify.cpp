@@ -25,12 +25,78 @@ struct Node {
 };
 
 
-uint nearest_photon(Photon *photons, int n, glm::vec3 location) {
+struct Heap {
+    uint n;
+    std::vector<uint> photons;
+    std::vector<float> sqdists;
+};
+
+
+static const uint K = 10;
+
+
+void heap_put(Heap &h, uint p, float d) {
+    uint i = h.n;
+
+    if (i < K) {
+        while (i > 0) {
+            uint p = (i - 1) / 2;
+
+            if (h.sqdists[p] < d) {
+                h.photons[i] = h.photons[p];
+                h.sqdists[i] = h.sqdists[p];
+                i = p;
+            } else {
+                break;
+            }
+        }
+
+        h.photons[i] = p;
+        h.sqdists[i] = d;
+
+        h.n++;
+        return;
+    }
+
+    if (h.sqdists[0] < d) {
+        return;
+    }
+
+    i = 0;
+
+    while (i * 2 < h.n) {
+        uint l = i * 2 + 1;
+        uint r = i * 2 + 2;
+
+        float dl = l < h.n ? h.sqdists[l] : -INFINITY;
+        float dr = r < h.n ? h.sqdists[r] : -INFINITY;
+
+        if (dl > dr && d < dl) {
+            h.photons[i] = h.photons[l];
+            h.sqdists[i] = dl;
+            i = l;
+        } else if (dl < dr && d < dr) {
+            h.photons[i] = h.photons[r];
+            h.sqdists[i] = dr;
+            i = r;
+        } else {
+            break;
+        }
+    }
+
+    h.photons[i] = p;
+    h.sqdists[i] = d;
+}
+
+
+Heap nearest_photons(Photon *photons, int n, glm::vec3 location) {
+    Heap results = {0};
+    results.photons.resize(K);
+    results.sqdists.resize(K);
+
     uint previous = 0;
     uint current = 0;
-
-    uint best_photon = 0;
-    float best_distance = 1.0 / 0.0;
+    uint steps = 0;
 
     do {
         // std::cout << "at photon " << current << '\n';
@@ -39,10 +105,7 @@ uint nearest_photon(Photon *photons, int n, glm::vec3 location) {
         // update best distance
         float d = glm::distance(location, p.location);
 
-        if (d < best_distance) {
-            best_photon = current;
-            best_distance = d;
-        }
+        heap_put(results, current, d);
 
         uint good, bad;
         uint parent = current > 0 ? (current - 1) / 2 : 0;
@@ -61,7 +124,7 @@ uint nearest_photon(Photon *photons, int n, glm::vec3 location) {
             previous = current;
             current = good;
         } else if (previous == good) { // came from "good" subtree
-            if (bad < n && std::abs(axis_distance) < best_distance) { // there might be a better point on the "bad" side
+            if (bad < n && std::abs(axis_distance) < results.sqdists[0]) { // there might be a better point on the "bad" side
                 previous = current;
                 current = bad;
             } else {
@@ -72,9 +135,13 @@ uint nearest_photon(Photon *photons, int n, glm::vec3 location) {
             previous = current;
             current = parent;
         }
+
+        steps++;
     } while (previous != current);
 
-    return best_photon;
+    std::cout << '(' << steps << " steps)";
+
+    return results;
 }
 
 
@@ -106,27 +173,36 @@ static void verify_nearest(int samples, Photon *data, int n) {
             randf(minimum.z, maximum.z)
         };
 
-        // std::cout << "Testing with location " << test << '\n';
+        std::cout << "Testing with location " << test << '\n';
+    
+        Heap naive = {0};
+        naive.photons.resize(K);
+        naive.sqdists.resize(K);
 
-        // uint naive = 0;
-        // float naive_distance = INFINITY;
+        for (int j = 0; j < n; j++) {
+            float d = glm::distance(test, data[j].location);
 
-        // for (int j = 0; j < n; j++) {
-        //     float distance = glm::distance(test, data[j].location);
+            std::cout << "NV Inserting " << j << ", " << d << " onto heap\n";
+            heap_put(naive, j, d);
+            for (int i = 0; i < naive.n; i++) {
+                std::cout << '(' << naive.photons[i] << ", " << naive.sqdists[i] << ") ";
+            }
+            std::cout << '\n';
+        }
 
-        //     if (distance < naive_distance) {
-        //         naive_distance = distance;
-        //         naive = j;
-        //     }
-        // }
+        std::cout << '(' << n << " steps)" "\tNaive gave photons ";
+        for (uint p : naive.photons) {
+            std::cout << p << ' ';
+        }
+        std::cout << '\n';
 
-        // std::cout << "\tNaive gave photon " << naive << '\n';
+        Heap kd = nearest_photons(data, n, test);
 
-        uint kd = nearest_photon(data, n, test);
-
-        // std::cout << "\tK-NN gave photon " << kd << '\n';
-
-        assert(kd + 1 > 0);
+        std::cout << "\tK-NN gave photons ";
+        for (uint p : kd.photons) {
+            std::cout << p << ' ';
+        }
+        std::cout << '\n';
     }
 }
 
@@ -315,7 +391,7 @@ void kdify(Photon *data, int n) {
     }
 
     verify_kd_tree(data, n);
-    // verify_nearest(1000, data, n);
+    // verify_nearest(1, data, n);
 }
 
 
