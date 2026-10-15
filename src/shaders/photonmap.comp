@@ -58,6 +58,7 @@ struct Hit {
 
 
 struct Ray {
+    uint bounces;
     float strength;
     vec3 color;
     vec3 origin;
@@ -288,6 +289,8 @@ Photon photon_hit(inout Ray ray, Hit hit) {
         0
     };
 
+    ray.bounces++;
+
     if (r <= mat.kd) { // diffuse reflection
         ray.color *= mat.color;
         ray.origin = p.location;
@@ -320,6 +323,7 @@ void shoot_photon(uint index) {
     Light light = lights[l];
 
     Ray ray = {
+        0,
         1.0,
         light.color,
         light.location,

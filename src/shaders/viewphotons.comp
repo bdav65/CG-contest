@@ -376,7 +376,7 @@ vec3 photon_color(vec3 location) {
 }
 
 
-vec3 photon_color2(vec3 location) {
+vec3 photon_color2(Ray ray, vec3 location) {
     vec3 color = vec3(0.0);
 
     const float R = 1.0;
@@ -385,7 +385,7 @@ vec3 photon_color2(vec3 location) {
         float d = distance(location, photons[i].location);
 
         if (distance(location, photons[i].location) < R) {
-            color += photons[i].color;
+            color += max(0, dot(-ray.direction, -photons[i].incident)) * photons[i].color;
         }
     }
 
@@ -419,7 +419,7 @@ vec3 pixel_color(vec2 pixel_coords) {
     Ray ray = generate_ray(pixel_coords);
     Hit hit = intersect_scene(ray);
 
-    return hit.did_hit ? photon_color4(hit.location) : vec3(0, 0, 0);
+    return hit.did_hit ? photon_color2(ray, hit.location) : vec3(0, 0, 0);
 }
 
 

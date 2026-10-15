@@ -6,7 +6,7 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
-#define K 16
+#define K 1
 
 uint seed;
 
@@ -74,6 +74,7 @@ struct Hit {
 struct Ray {
     float strength;
     vec3 color;
+    vec3 color_mult;
     vec3 origin;
     vec3 direction;
 };
@@ -152,7 +153,8 @@ layout(binding = 6) writeonly uniform image2D output_image;
 Ray generate_ray(vec2 coord) {
     Ray r = {
         1.0,
-        vec3(0),
+        vec3(0.0),
+        vec3(1.0, 1.0, 1.0),
         camera.origin,
         vec3(
             2 * (coord.x) / camera.resolution.x - 1,
@@ -237,7 +239,88 @@ vec3 estimated_radiance(vec3 location) {
         color += photons[nearest.photons[i]].color;
     }
 
-    return color / (PI * nearest.sqdists[0]);
+    return color / (PI * max(1.0, nearest.sqdists[0]));
+}
+
+
+vec3 estimated_radiance2(Ray ray, vec3 location) {
+    vec3 color = vec3(0, 0, 0);
+    const float R = 16.0;
+
+    for (int i = 0; i < photon_amount; i++) {
+        float d = distance(location, photons[i].location);
+
+        if (d < R) {
+            color += photons[i].color;
+        }
+    }
+
+    return color / (PI * R * R);
+}
+
+
+uint knn_radiance(inout vec3 color, Ray ray, vec3 location, float radius, inout float max_distance) {
+    uint found = 0;
+    color = vec3(0.0);
+
+    uint previous = 0;
+    uint current = 0;
+
+    do {
+        Photon p = photons[current];
+
+        uint good, bad;
+        uint parent = current > 0 ? (current - 1) / 2 : 0;
+
+        float axis_distance = location[p.axis] - p.location[p.axis];
+
+        if (axis_distance < 0) {
+            good = 2 * current + 1;
+            bad  = 2 * current + 2;
+        } else {
+            good = 2 * current + 2;
+            bad  = 2 * current + 1;
+        }
+        
+        if (good < photon_amount && previous <= current) { // came from parent (or started from root)
+            previous = current;
+            current = good;
+        } else if (previous == good) { // came from "good" subtree
+            if (bad < photon_amount && abs(axis_distance) < radius) { // there might be a better point on the "bad" side
+                previous = current;
+                current = bad;
+            } else {
+                previous = current;
+                current = parent;
+            }
+        } else { // came from "bad" subtree
+            previous = current;
+            current = parent;
+        }
+
+        float dist = distance(location, p.location);
+
+        if (current == parent && dist < radius) {
+            max_distance = max(dist, max_distance);
+            color += p.color;
+            found++;
+        }
+    } while (previous != current);
+
+    return found;
+}
+
+
+vec3 estimated_radiance3(Ray ray, vec3 location) {
+    float radius = 0.002;
+    float max_radius = 0.0;
+    vec3 color;
+
+    while (knn_radiance(color, ray, location, radius, max_radius) < K) {
+        radius *= 2;
+    }
+
+    return color / (PI * max_radius * max_radius);
 }
 
 
@@ -351,7 +434,7 @@ void phong_shading(inout Ray ray, Hit hit) {
         vec3 L = normalize(lights[i].location - hit.location);
     
         if (camera.render_shadows) {
-            Ray shadow = {0, vec3(0), hit.location + BIAS * N, L};
+            Ray shadow = {0, vec3(0), vec3(0), hit.location + BIAS * N, L};
             Hit shadowHit = intersect_scene(shadow);
 
             if (shadowHit.did_hit && shadowHit.t < length(lights[i].location - hit.location)) {
@@ -375,7 +458,7 @@ void phong_shading(inout Ray ray, Hit hit) {
         ray.origin = hit.location + BIAS * N;
         ray.direction = reflect(ray.direction, N);
     } else {
-        ray.color += ray.strength * estimated_radiance(hit.location);
+        ray.color += mat.color * estimated_radiance3(ray, hit.location);
         ray.strength = 0.0;
     }
 }
@@ -409,7 +492,7 @@ void glass_shading(inout Ray ray, Hit hit) {
         ray.direction = reflect(D, N);
     } else {
         ray.origin = hit.location - BIAS * N;
-        ray.direction = refraction;
+        ray.direction = normalize(refraction);
     }
     #else
     if (dot(refraction, refraction) == 0.0) {
@@ -446,7 +529,7 @@ vec4 pixel_color(vec2 pixel_coords) {
                 }
             }
 
-            result += ray.color;
+            result += ray.color * ray.color_mult;
         }
     }
 
