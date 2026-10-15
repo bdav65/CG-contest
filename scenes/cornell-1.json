@@ -172,7 +172,7 @@
                 "color": [1.0, 0.0, 0.0],
                 "roughness": 0.5,
                 "IOR": 1.5,
-                "transparency": 1.0
+                "transparency": 0.0
             }
         },
         {
