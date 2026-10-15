@@ -107,16 +107,10 @@ void Scene::loadLights(Json const &root) {
 
 /* Returns the Material object from the current material node */
 Material getMaterial(Json const &mat) {
-    int isGlass = mat.contains("isTransparent") && mat["isTransparent"];
-    float nt = isGlass ? static_cast<float>(mat["nt"]) : 0.0;
-
     return Material {
         glm::vec3(mat["color"][0], mat["color"][1], mat["color"][2]),
-        mat["ka"],
-        mat["kd"],
-        mat["ks"],
-        mat["n"],
-        isGlass,
-        nt
+        mat["roughness"],
+        mat["IOR"],
+        mat["transparency"]
     };
 }

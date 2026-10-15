@@ -1,4 +1,3 @@
-// Information about what version and extensions of GLSL we are using 
 #version 460
 #extension GL_EXT_scalar_block_layout : enable
 
@@ -20,19 +19,11 @@ float noise() {
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 
-
-//////////////////////////////////////////
-///////////// DATA STRUCTURES ////////////
-//////////////////////////////////////////
-
 struct Material {
     vec3 color;
-    float ka;
-    float kd;
-    float ks;
-    uint n;
-    bool is_glass;
-    float nt;
+    float roughness;
+    float IOR;
+    float transparency;
 };
 
 

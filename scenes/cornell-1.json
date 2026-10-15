@@ -20,10 +20,9 @@
             "material":
             {
                 "color": [0.8, 0.4, 0.4],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -36,10 +35,9 @@
             "material":
             {
                 "color": [0.8, 0.4, 0.4],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -52,10 +50,9 @@
             "material":
             {
                 "color": [0.6, 0.8, 0.6],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -68,10 +65,9 @@
             "material":
             {
                 "color": [0.6, 0.8, 0.6],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -84,10 +80,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -100,10 +95,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -116,10 +110,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -132,10 +125,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -148,10 +140,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -164,10 +155,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 1.0,
-                "ks": 0.0,
-                "n": 64
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
             }
         },
         {
@@ -180,12 +170,9 @@
             "material":
             {
                 "color": [1.0, 0.0, 0.0],
-                "ka": 0.0,
-                "kd": 0.0,
-                "ks": 0.05,
-                "n": 4,
-                "isTransparent": true,
-                "nt": 1.55
+                "roughness": 1.0,
+                "IOR": 1.5,
+                "transparency": 1.0
             }
         },
         {
@@ -196,12 +183,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 0.0,
-                "ks": 0.1,
-                "n": 4,
-                "isTransparent": true,
-                "nt": 1.55
+                "roughness": 1.0,
+                "IOR": 1.5,
+                "transparency": 1.0
             }
         }
     ]

@@ -10,12 +10,9 @@ using Json = nlohmann::json;
 
 struct Material {
     alignas(16) glm::vec3 color;
-    float ka;
-    float kd;
-    float ks;
-    uint n;
-    int isGlass;
-    float nt;
+    float roughness;
+    float IOR;
+    float transparency;
 };
 
 
