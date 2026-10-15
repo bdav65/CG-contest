@@ -1,10 +1,11 @@
 #include "raytracer.hpp"
+#include "photonmap.hpp"
 #include "timer.hpp"
 
 #include <iostream>
 
 
-RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, StagingBuffer &_photons):
+RayTracer::RayTracer(Scene &scene, VulkanHelper &helper):
     scene(scene),
     vulkanHelper(helper),
     camera(vulkanHelper, sizeof(Camera)),
@@ -12,9 +13,8 @@ RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, StagingBuffer &_photons
     spheres(vulkanHelper, scene.getSpheres()),
     triangles(vulkanHelper, scene.getTriangles()),
     lights(vulkanHelper, scene.getLights()),
-    photons(vulkanHelper, _photons)
+    photons(vulkanHelper, std::vector<Photon>())
 {
-    _photons.destroy();
     createResources();
     createPipeline();
 }

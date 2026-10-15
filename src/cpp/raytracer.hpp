@@ -31,7 +31,7 @@ class RayTracer {
     VkPipelineLayout pipelineLayout;
 
     public:
-        RayTracer(Scene &scene, VulkanHelper &helper, StagingBuffer &photons);
+        RayTracer(Scene &scene, VulkanHelper &helper);
         void run();
         ~RayTracer();
 

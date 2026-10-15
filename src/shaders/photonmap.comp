@@ -58,7 +58,8 @@ struct Hit {
 
 
 struct Ray {
-    uint bounces;
+    uint diffuse_bounces;
+    uint specular_bounces;
     float strength;
     vec3 color;
     vec3 origin;
@@ -289,9 +290,11 @@ Photon photon_hit(inout Ray ray, Hit hit) {
         0
     };
 
-    ray.bounces++;
+    uint db = ray.diffuse_bounces;
+    uint sb = ray.specular_bounces;
 
     if (r <= mat.kd) { // diffuse reflection
+        ray.diffuse_bounces++;
         ray.color *= mat.color;
         ray.origin = p.location;
         ray.direction = random_direction();
@@ -300,19 +303,21 @@ Photon photon_hit(inout Ray ray, Hit hit) {
             ray.direction *= -1;
         }
     } else if (r <= mat.kd + mat.ks) { // specular reflection
+        ray.specular_bounces++;
         ray.color *= mat.color;
         ray.origin = p.location;
         ray.direction = reflect(ray.direction, hit.normal);
     } else {
         // absorption/refraction (todo)
         if (mat.is_glass) {
+            ray.specular_bounces++;
             glass_shading(ray, hit);
         } else {
             ray.strength = 0.0;
         }
     }
 
-    return mat.ks > EPSILON ? MISS : p;
+    return mat.ks > EPSILON || db < 1 ? MISS : p;
 }
 
 
@@ -323,7 +328,7 @@ void shoot_photon(uint index) {
     Light light = lights[l];
 
     Ray ray = {
-        0,
+        0, 0,
         1.0,
         light.color,
         light.location,
