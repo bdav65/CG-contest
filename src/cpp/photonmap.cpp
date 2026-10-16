@@ -126,17 +126,21 @@ StagingBuffer PhotonMap::compute() {
     memcpy(photonData.mapped_size, &hits, sizeof(int));
 
     // std::cout << "log: Cleared miss photons, " << hits.size() << " photons remaining\n";
-    steps.log(std::format("Copied photon data to readable memory ({} hits)", hits));
-
-    kdify(raw, hits);
-
-    steps.log("Constructed KD-tree");
-
-    // photons.setSize(hits.size());
-    // memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
+    if (hits) {
+        steps.log(std::format("Copied photon data to readable memory ({} hits)", hits));
     
-    // steps.log("Sent back photon data to GPU");
-    total.log("Finished preparing the photon map");
+        kdify(raw, hits);
+    
+        steps.log("Constructed KD-tree");
+    
+        // photons.setSize(hits.size());
+        // memcpy(photons.mapped_data, hits.data(), hits.size() * sizeof(Photon));
+        
+        // steps.log("Sent back photon data to GPU");
+        total.log("Finished preparing the photon map");
+    } else {
+        steps.log("No photon hits!");
+    }
 
     return photonData;
 }

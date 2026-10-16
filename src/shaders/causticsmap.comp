@@ -337,9 +337,15 @@ void main() {
 
     seed = gl_GlobalInvocationID.x;
 
-    for (int attempt = 0; attempt < 4; attempt++) {
+    int attempt;
+
+    for (attempt = 0; attempt < 4; attempt++) {
         if (shoot_photon(i)) {
             break;
         }
+    }
+
+    if (attempt == 4) {
+        photons[i] = MISS;
     }
 }

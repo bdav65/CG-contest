@@ -1,5 +1,8 @@
 #include "scene.hpp"
 
+#include "OBJ-Loader/OBJ_Loader.h"
+
+#include <format>
 #include <fstream>
 
 
@@ -85,6 +88,10 @@ void Scene::loadObjects(Json const &root) {
             triangles.push_back(Triangle {object_index, b, d, f, {1, 0, 0}}); // +x face
             triangles.push_back(Triangle {object_index, d, f, h, {1, 0, 0}});
         }
+
+        else if (obj["type"] == "model") {
+            loadModel(object_index, obj["file"]);
+        }
         
         else {
             throw std::runtime_error("Encountered incompatible shape! Try running another scene");
@@ -113,4 +120,40 @@ Material getMaterial(Json const &mat) {
         mat["IOR"],
         mat["transparency"]
     };
+}
+
+
+glm::vec3 toGlmVec(objl::Vector3 v) {
+    return glm::vec3 {v.X, v.Y, v.Z};
+}
+
+
+void Scene::loadModel(uint objectIndex, std::string file) {
+    objl::Loader loader;
+
+    if (!loader.LoadFile(file) || loader.LoadedMeshes.empty()) {
+        throw std::runtime_error(std::format("Failed to load model \"{}\"\n", file));
+    }
+
+    objl::Mesh mesh = loader.LoadedMeshes.front();
+    
+    std::cout << "Found mesh " << mesh.MeshName << '\n';
+
+    for (int t = 0; t < mesh.Indices.size(); t += 3) {
+        int v0 = mesh.Indices[t];
+        int v1 = mesh.Indices[t + 1];
+        int v2 = mesh.Indices[t + 2];
+
+        glm::vec3 normal = glm::normalize(toGlmVec(mesh.Vertices[v0].Normal + mesh.Vertices[v1].Normal + mesh.Vertices[v2].Normal));
+
+        std::cout << "Triangle [" << mesh.Vertices[v0].Position.X << ", " << mesh.Vertices[v0].Position.Y << ", " << mesh.Vertices[v0].Position.Z << "] [" << mesh.Vertices[v1].Position.X << ", " << mesh.Vertices[v1].Position.Y << ", " << mesh.Vertices[v1].Position.Z << "] [" << mesh.Vertices[v2].Position.X << ", " << mesh.Vertices[v2].Position.Y << ", " << mesh.Vertices[v2].Position.Z << "]\n";
+
+        triangles.push_back(Triangle {
+            objectIndex,
+            toGlmVec(mesh.Vertices[v0].Position),
+            toGlmVec(mesh.Vertices[v1].Position),
+            toGlmVec(mesh.Vertices[v2].Position),
+            normal
+        });
+    }
 }

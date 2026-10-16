@@ -1,0 +1,26 @@
+{
+    "Eye": [0, 8, -10],
+    "Shadows": true,
+    "Texture": "textures/earth.png",
+    "MaxBounces": 8,
+    "Lights": [
+        {
+            "position": [5, 12, -20],
+            "color": [0.9, 0.9, 0.9]
+        }
+    ],
+    "Objects": [
+        {
+            "type": "model",
+            "comment": "Torus model",
+            "file": "scenes/models/torus.obj",
+            "material":
+            {
+                "color": [0.8, 0.4, 0.4],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        }
+    ]
+}
