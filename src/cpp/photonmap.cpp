@@ -3,7 +3,7 @@
 #include "timer.hpp"
 
 #define PHOTONS 50000
-#define BOUNCES 4
+#define BOUNCES 32
 
 
 struct PhotonConfig {

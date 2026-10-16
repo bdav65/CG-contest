@@ -1,11 +1,11 @@
 {
-    "Eye": [0, 8, -10],
+    "Eye": [0, 800, -1000],
     "Shadows": true,
     "Texture": "textures/earth.png",
     "MaxBounces": 8,
     "Lights": [
         {
-            "position": [5, 12, -20],
+            "position": [100, 950, -500],
             "color": [0.9, 0.9, 0.9]
         }
     ],
@@ -14,11 +14,26 @@
             "type": "model",
             "comment": "Torus model",
             "file": "scenes/models/torus.obj",
+            "offset": [0, 0, 0],
+            "scale": 100.0,
             "material":
             {
-                "color": [0.8, 0.4, 0.4],
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 0.0,
+                "IOR": 1.33,
+                "transparency": 1.0
+            }
+        },
+        {
+            "type": "aabb",
+            "invert": true,
+            "v0": [-250, 500, -2000],
+            "v1": [250, 1000, 500],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
                 "roughness": 1.0,
-                "IOR": 1.46,
+                "IOR": 1.0,
                 "transparency": 0.0
             }
         }

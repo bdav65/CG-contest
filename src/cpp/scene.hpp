@@ -82,7 +82,7 @@ class Scene {
     void loadCameraInformation(Json const &root);
     void loadObjects(Json const &root);
     void loadLights(Json const &root);
-    void loadModel(uint objectIndex, std::string file);
+    void loadModel(uint objectIndex, Json const &root);
 };
 
 // Helper function

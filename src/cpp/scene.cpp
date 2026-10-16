@@ -2,7 +2,6 @@
 
 #include "OBJ-Loader/OBJ_Loader.h"
 
-#include <format>
 #include <fstream>
 
 
@@ -65,6 +64,9 @@ void Scene::loadObjects(Json const &root) {
         }
         
         else if (obj["type"] == "aabb") {
+            int invert = obj.contains("invert") ? static_cast<bool>(obj["invert"]) : false;
+            invert = invert ? -1 : 1;
+
             glm::vec3 a {obj["v0"][0], obj["v0"][1], obj["v0"][2]};
             glm::vec3 h {obj["v1"][0], obj["v1"][1], obj["v1"][2]};
 
@@ -75,22 +77,22 @@ void Scene::loadObjects(Json const &root) {
             glm::vec3 f {h.x, a.y, h.z};
             glm::vec3 g {a.x, h.y, h.z};
 
-            triangles.push_back(Triangle {object_index, a, b, c, {0, 0, -1}}); // -z face
-            triangles.push_back(Triangle {object_index, b, c, d, {0, 0, -1}});
-            triangles.push_back(Triangle {object_index, a, b, e, {0, -1, 0}}); // -y face
-            triangles.push_back(Triangle {object_index, b, e, f, {0, -1, 0}});
-            triangles.push_back(Triangle {object_index, a, c, e, {-1, 0, 0}}); // -x face
-            triangles.push_back(Triangle {object_index, c, e, g, {-1, 0, 0}});
-            triangles.push_back(Triangle {object_index, e, f, g, {0, 0, 1}}); // +z face
-            triangles.push_back(Triangle {object_index, f, g, h, {0, 0, 1}});
-            triangles.push_back(Triangle {object_index, c, d, g, {0, 1, 0}}); // +y face
-            triangles.push_back(Triangle {object_index, d, g, h, {0, 1, 0}});
-            triangles.push_back(Triangle {object_index, b, d, f, {1, 0, 0}}); // +x face
-            triangles.push_back(Triangle {object_index, d, f, h, {1, 0, 0}});
+            triangles.push_back(Triangle {object_index, a, b, c, {0, 0, -invert}}); // -z face
+            triangles.push_back(Triangle {object_index, b, c, d, {0, 0, -invert}});
+            triangles.push_back(Triangle {object_index, a, b, e, {0, -invert, 0}}); // -y face
+            triangles.push_back(Triangle {object_index, b, e, f, {0, -invert, 0}});
+            triangles.push_back(Triangle {object_index, a, c, e, {-invert, 0, 0}}); // -x face
+            triangles.push_back(Triangle {object_index, c, e, g, {-invert, 0, 0}});
+            triangles.push_back(Triangle {object_index, e, f, g, {0, 0, invert}}); // +z face
+            triangles.push_back(Triangle {object_index, f, g, h, {0, 0, invert}});
+            triangles.push_back(Triangle {object_index, c, d, g, {0, invert, 0}}); // +y face
+            triangles.push_back(Triangle {object_index, d, g, h, {0, invert, 0}});
+            triangles.push_back(Triangle {object_index, b, d, f, {invert, 0, 0}}); // +x face
+            triangles.push_back(Triangle {object_index, d, f, h, {invert, 0, 0}});
         }
 
         else if (obj["type"] == "model") {
-            loadModel(object_index, obj["file"]);
+            loadModel(object_index, obj);
         }
         
         else {
@@ -128,16 +130,21 @@ glm::vec3 toGlmVec(objl::Vector3 v) {
 }
 
 
-void Scene::loadModel(uint objectIndex, std::string file) {
+void Scene::loadModel(uint objectIndex, Json const &root) {
     objl::Loader loader;
+    std::string file = root["file"];
 
     if (!loader.LoadFile(file) || loader.LoadedMeshes.empty()) {
-        throw std::runtime_error(std::format("Failed to load model \"{}\"\n", file));
+        throw std::runtime_error("Failed to load model!");
     }
 
+    float scale = root.contains("scale") ? static_cast<float>(root["scale"]) : 1.0;
+
+    glm::vec3 offset = root.contains("offset") ? 
+        glm::vec3 {root["offset"][0], root["offset"][1], root["offset"][2]} :
+        glm::vec3 {0, 0, 0};
+
     objl::Mesh mesh = loader.LoadedMeshes.front();
-    
-    std::cout << "Found mesh " << mesh.MeshName << '\n';
 
     for (int t = 0; t < mesh.Indices.size(); t += 3) {
         int v0 = mesh.Indices[t];
@@ -146,13 +153,11 @@ void Scene::loadModel(uint objectIndex, std::string file) {
 
         glm::vec3 normal = glm::normalize(toGlmVec(mesh.Vertices[v0].Normal + mesh.Vertices[v1].Normal + mesh.Vertices[v2].Normal));
 
-        std::cout << "Triangle [" << mesh.Vertices[v0].Position.X << ", " << mesh.Vertices[v0].Position.Y << ", " << mesh.Vertices[v0].Position.Z << "] [" << mesh.Vertices[v1].Position.X << ", " << mesh.Vertices[v1].Position.Y << ", " << mesh.Vertices[v1].Position.Z << "] [" << mesh.Vertices[v2].Position.X << ", " << mesh.Vertices[v2].Position.Y << ", " << mesh.Vertices[v2].Position.Z << "]\n";
-
         triangles.push_back(Triangle {
             objectIndex,
-            toGlmVec(mesh.Vertices[v0].Position),
-            toGlmVec(mesh.Vertices[v1].Position),
-            toGlmVec(mesh.Vertices[v2].Position),
+            (toGlmVec(mesh.Vertices[v0].Position) * scale) + offset,
+            (toGlmVec(mesh.Vertices[v1].Position) * scale) + offset,
+            (toGlmVec(mesh.Vertices[v2].Position) * scale) + offset,
             normal
         });
     }

@@ -5,7 +5,7 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
-#define K 60
+#define K 40
 #define FILTER_K 1.2
 
 uint seed;
@@ -204,28 +204,30 @@ struct Heap {
 
 
 float heap_distance(const Heap h, uint i, vec3 x) {
-    return i < h.n ? distance(x, photons[h.indices[i]].location) : 1.0 / 0.0;
+    return distance(x, photons[h.indices[i]].location);
 }
 
 
-void heap_put(inout Heap h, vec3 x, uint p, float d) {
-    uint i = h.n;
+void heap_put(inout Heap h, vec3 x, uint p) {
+    float d = distance(x, photons[p].location);
 
-    if (i < K) {
+    if (h.n < K) {
+        uint i = h.n;
+
         while (i > 0) {
-            uint p = (i - 1) / 2;
+            uint parent = (i - 1) / 2;
 
-            if (heap_distance(h, p, x) < d) {
-                h.indices[i] = h.indices[p];
-                i = p;
+            if (heap_distance(h, parent, x) < d) {
+                h.indices[i] = h.indices[parent];
+                i = parent;
             } else {
                 break;
             }
         }
 
         h.indices[i] = p;
-
         h.n++;
+
         return;
     }
 
@@ -233,21 +235,34 @@ void heap_put(inout Heap h, vec3 x, uint p, float d) {
         return;
     }
 
-    i = 0;
+    uint i = 0;
 
-    while (i * 2 < h.n) {
+    while (true) {
         uint l = i * 2 + 1;
         uint r = i * 2 + 2;
 
-        float dl = l < h.n ? heap_distance(h, l, x) : -(1.0 / 0.0);
-        float dr = r < h.n ? heap_distance(h, r, x) : -(1.0 / 0.0);
+        if (l >= h.n) {
+            break;
+        }
 
-        if (dl > dr && d < dl) {
-            h.indices[i] = h.indices[l];
-            i = l;
-        } else if (dl < dr && d < dr) {
+        float dl = distance(x, photons[h.indices[l]].location);
+
+        if (r >= h.n) {
+            if (d < dl) {
+                h.indices[i] = h.indices[l];
+                i = l;
+            }
+            break;
+        }
+
+        float dr = distance(x, photons[h.indices[r]].location);
+
+        if (dr > dl && d < dr) {
             h.indices[i] = h.indices[r];
             i = r;
+        } else if (d < dl) {
+            h.indices[i] = h.indices[l];
+            i = l;
         } else {
             break;
         }
@@ -258,7 +273,7 @@ void heap_put(inout Heap h, vec3 x, uint p, float d) {
 
 
 bool heap_could_accept(const Heap h, float distance, vec3 x) {
-    return h.n < K || heap_distance(h, 0, x) > distance;
+    return h.n < K || distance < heap_distance(h, 0, x);
 }
 
 
@@ -306,14 +321,16 @@ vec3 knn_radiance(Hit hit) {
         }
 
         if (current == parent) {
-            heap_put(neighbors, x, previous, distance(hit.location, p.location));
+            heap_put(neighbors, x, previous);
         }
     } while (previous != current);
 
-    float r = 0.0;
+    float r = distance(x, photons[neighbors.indices[0]].location);
 
     for (int i = 0; i < neighbors.n; i++) {
-        r = max(r, distance(x, photons[neighbors.indices[i]].location));
+        if (distance(x, photons[neighbors.indices[i]].location) > r) {
+            return vec3(1.0, 0.0, 0.0);
+        }
     }
 
     for (int i = 0; i < neighbors.n; i++) {
@@ -484,7 +501,7 @@ void custom_shading(inout Ray ray, Hit hit) {
 
         ray.color += ray.strength * (kd * diffuse * mat.color + ks * specular);
 
-        if (ks < EPSILON) {
+        if (ks < EPSILON && photon_amount > 0) {
             ray.color += ray.strength * estimated_radiance3(hit);
         }
         
