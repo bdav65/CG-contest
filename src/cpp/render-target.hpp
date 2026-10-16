@@ -8,7 +8,7 @@
 #include <GLFW/glfw3.h>
 
 
-const VkExtent2D RESOLUTION = {1024, 1024};
+const VkExtent2D RESOLUTION = {512, 512};
 
 
 class RenderTarget {

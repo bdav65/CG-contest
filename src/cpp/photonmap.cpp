@@ -2,7 +2,7 @@
 #include "kdify.hpp"
 #include "timer.hpp"
 
-#define LIGHT_PHOTONS 1000000
+#define PHOTONS 50000
 #define BOUNCES 4
 
 
@@ -15,7 +15,7 @@ struct PhotonConfig {
 
 size_t PhotonMap::photonMapCapacity() {
     // todo a better way to set this
-    uint photons_per_light = LIGHT_PHOTONS;
+    uint photons_per_light = PHOTONS / scene.getLights().size();
     uint bounces = BOUNCES;
 
     if (caustics) {
@@ -79,8 +79,8 @@ StagingBuffer PhotonMap::compute() {
 
 	// Update uniform buffer
     PhotonConfig photonConfig {
-        LIGHT_PHOTONS,
-        static_cast<uint>(LIGHT_PHOTONS * scene.getLights().size()),
+        static_cast<uint>(PHOTONS / scene.getLights().size()),
+        static_cast<uint>(PHOTONS / scene.getLights().size() * scene.getLights().size()),
         BOUNCES
     };
 
