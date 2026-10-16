@@ -5,7 +5,7 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
-#define K 40
+#define K 60
 #define FILTER_K 1.2
 
 uint seed;
@@ -200,15 +200,15 @@ Ray generate_ray(vec2 coord) {
 struct Heap {
     uint n;
     uint indices[K];
-};
+} h;
 
 
-float heap_distance(const Heap h, uint i, vec3 x) {
+float heap_distance(uint i, vec3 x) {
     return distance(x, photons[h.indices[i]].location);
 }
 
 
-void heap_put(inout Heap h, vec3 x, uint p) {
+void heap_put(vec3 x, uint p) {
     float d = distance(x, photons[p].location);
 
     if (h.n < K) {
@@ -217,7 +217,7 @@ void heap_put(inout Heap h, vec3 x, uint p) {
         while (i > 0) {
             uint parent = (i - 1) / 2;
 
-            if (heap_distance(h, parent, x) < d) {
+            if (heap_distance(parent, x) < d) {
                 h.indices[i] = h.indices[parent];
                 i = parent;
             } else {
@@ -231,7 +231,7 @@ void heap_put(inout Heap h, vec3 x, uint p) {
         return;
     }
 
-    if (heap_distance(h, 0, x) < d) {
+    if (heap_distance(0, x) < d) {
         return;
     }
 
@@ -272,8 +272,8 @@ void heap_put(inout Heap h, vec3 x, uint p) {
 }
 
 
-bool heap_could_accept(const Heap h, float distance, vec3 x) {
-    return h.n < K || distance < heap_distance(h, 0, x);
+bool heap_could_accept(float distance, vec3 x) {
+    return h.n < K || distance < heap_distance(0, x);
 }
 
 
@@ -285,8 +285,7 @@ vec3 knn_radiance(Hit hit) {
     uint previous = 0;
     uint current = 0;
 
-    Heap neighbors;
-    neighbors.n = 0;
+    h.n = 0;
 
     do {
         Photon p = photons[current];
@@ -308,7 +307,7 @@ vec3 knn_radiance(Hit hit) {
             previous = current;
             current = good;
         } else if (previous == good) { // came from "good" subtree
-            if (bad < photon_amount && heap_could_accept(neighbors, abs(axis_distance), x)) { // there might be a better point on the "bad" side
+            if (bad < photon_amount && heap_could_accept(abs(axis_distance), x)) { // there might be a better point on the "bad" side
                 previous = current;
                 current = bad;
             } else {
@@ -321,20 +320,14 @@ vec3 knn_radiance(Hit hit) {
         }
 
         if (current == parent) {
-            heap_put(neighbors, x, previous);
+            heap_put(x, previous);
         }
     } while (previous != current);
 
-    float r = distance(x, photons[neighbors.indices[0]].location);
+    float r = distance(x, photons[h.indices[0]].location);
 
-    for (int i = 0; i < neighbors.n; i++) {
-        if (distance(x, photons[neighbors.indices[i]].location) > r) {
-            return vec3(1.0, 0.0, 0.0);
-        }
-    }
-
-    for (int i = 0; i < neighbors.n; i++) {
-        Photon p = photons[neighbors.indices[i]];
+    for (int i = 0; i < h.n; i++) {
+        Photon p = photons[h.indices[i]];
         float d = distance(x, p.location);
         color += dot(-p.incident, hit.normal) * p.color * (1 - (d / (FILTER_K * r)));
     }

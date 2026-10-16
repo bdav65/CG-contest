@@ -1,0 +1,41 @@
+{
+    "Eye": [0, 200, -1000],
+    "Shadows": true,
+    "Texture": "textures/earth.png",
+    "MaxBounces": 8,
+    "Lights": [
+        {
+            "position": [170, 490, -500],
+            "color": [0.9, 0.9, 0.9]
+        }
+    ],
+    "Objects": [
+        {
+            "type": "model",
+            "comment": "Diamond model",
+            "file": "scenes/models/diamond_rotated.obj",
+            "offset": [0, 0, 0],
+            "scale": 100.0,
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 0.0,
+                "IOR": 2.418,
+                "transparency": 1.0
+            }
+        },
+        {
+            "type": "aabb",
+            "invert": true,
+            "v0": [-250, 0, -1000],
+            "v1": [250, 500, 500],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.0,
+                "transparency": 0.0
+            }
+        }
+    ]
+}
