@@ -1,0 +1,200 @@
+{
+    "Eye": [0, 0, -1500],
+    "Shadows": true,
+    "Texture": "textures/earth.png",
+    "MaxBounces": 8,
+    "Lights": [
+        {
+            "position": [-50, 98.5, -963],
+            "color": [0.7, 0.1, 0.1]
+        },
+        {
+            "position": [0, 98.5, -963],
+            "color": [0.1, 0.1, 0.7]
+        },
+        {
+            "position": [50, 98.5, -963],
+            "color": [0.1, 0.7, 0.1]
+        }
+    ],
+    "Objects": [
+        {
+            "type": "triangle",
+            "comment": "Wall left 1",
+            "v0": [-100, -100, -820],
+            "v1": [-100, -100, -1120],
+            "v2": [-100, 100, -1120],
+            "normal": [1, 0, 0],
+            "material":
+            {
+                "color": [0.8, 0.4, 0.4],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Wall left 2",
+            "v0": [-100, -100, -820],
+            "v1": [-100, 100, -820],
+            "v2": [-100, 100, -1120],
+            "normal": [1, 0, 0],
+            "material":
+            {
+                "color": [0.8, 0.4, 0.4],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Wall right 1",
+            "v0": [100, -100, -820],
+            "v1": [100, -100, -1120],
+            "v2": [100, 100, -1120],
+            "normal": [-1, 0, 0],
+            "material":
+            {
+                "color": [0.6, 0.8, 0.6],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Wall right 2",
+            "v0": [100, -100, -820],
+            "v1": [100, 100, -820],
+            "v2": [100, 100, -1120],
+            "normal": [-1, 0, 0],
+            "material":
+            {
+                "color": [0.6, 0.8, 0.6],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Floor 1",
+            "v0": [-100, -100, -820],
+            "v1": [-100, -100, -1120],
+            "v2": [100, -100, -820],
+            "normal": [0, 1, 0],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Floor 2",
+            "v0": [100, -100, -820],
+            "v1": [-100, -100, -1120],
+            "v2": [100, -100, -1120],
+            "normal": [0, 1, 0],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Ceiling 1",
+            "v0": [-100, 100, -820],
+            "v1": [-100, 100, -1120],
+            "v2": [100, 100, -820],
+            "normal": [0, -1, 0],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Ceiling 2",
+            "v0": [100, 100, -820],
+            "v1": [-100, 100, -1120],
+            "v2": [100, 100, -1120],
+            "normal": [0, -1, 0],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Back 1",
+            "v0": [-100, 100, -820],
+            "v1": [-100, -100, -820],
+            "v2": [100, -100, -820],
+            "normal": [0, 0, -1],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "triangle",
+            "comment": "Back 2",
+            "v0": [-100, 100, -820],
+            "v1": [100, 100, -820],
+            "v2": [100, -100, -820],
+            "normal": [0, 0, -1],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.46,
+                "transparency": 0.0
+            }
+        },
+        {
+            "type": "sphere",
+            "comment": "Red sphere",
+            "position": [45, -70, -983],
+            "radius": 29.3,
+            "rotation": [1, 1, 0],
+            "angle": 60,
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 0.0,
+                "IOR": 1.5,
+                "transparency": 1.0
+            }
+        },
+        {
+            "type": "sphere",
+            "comment": "Glass box",
+            "position": [-50, -50, -1020],
+            "radius": 50,
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 0.0,
+                "IOR": 1.5,
+                "transparency": 1.0
+            }
+        }
+    ]
+}

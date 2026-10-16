@@ -7,3 +7,4 @@ ray_tracer
 *.py
 vgcore.*
 gmon.out
+!images/*.png
