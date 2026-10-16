@@ -5,6 +5,8 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
+#define K 50
+#define FILTER_K 1.2
 
 uint seed;
 
@@ -168,7 +170,34 @@ Ray generate_ray(vec2 coord) {
 }
 
 
-uint knn_radiance(inout vec3 color, Ray ray, vec3 location, float radius, inout float max_distance) {
+// float fresnel_reflection(vec3 I, vec3 N, float n) {
+//     incoming_angle = clamp(incoming_angle, -1, 1);
+
+//     if (incoming_angle < 0) {
+//         n = 1.0 / n;
+//         incoming_angle *= -1;
+//     }
+
+//     float 
+
+//     <<Compute  for Fresnel equations using Snell’s law>> 
+//        Float sin2Theta_i = 1 - Sqr(cosTheta_i);
+//        Float sin2Theta_t = sin2Theta_i / Sqr(eta);
+//        if (sin2Theta_t >= 1)
+//            return 1.f;
+    
+//        Float cosTheta_t = SafeSqrt(1 - sin2Theta_t);
+//     float refracted_angle
+
+//     float parallel = (eta * cosTheta_i - cosTheta_t) /
+//                    (eta * cosTheta_i + cosTheta_t);
+//     float perpendicular = (cosTheta_i - eta * cosTheta_t) /
+//                    (cosTheta_i + eta * cosTheta_t);
+//     return (Sqr(r_parl) + Sqr(r_perp)) / 2;
+// }
+
+
+uint knn_radiance(inout vec3 color, Hit hit, float radius, inout float max_distance) {
     uint found = 0;
     color = vec3(0.0);
 
@@ -181,7 +210,7 @@ uint knn_radiance(inout vec3 color, Ray ray, vec3 location, float radius, inout 
         uint good, bad;
         uint parent = current > 0 ? (current - 1) / 2 : 0;
 
-        float axis_distance = location[p.axis] - p.location[p.axis];
+        float axis_distance = hit.location[p.axis] - p.location[p.axis];
 
         if (axis_distance < 0) {
             good = 2 * current + 1;
@@ -207,11 +236,11 @@ uint knn_radiance(inout vec3 color, Ray ray, vec3 location, float radius, inout 
             current = parent;
         }
 
-        float dist = distance(location, p.location);
+        float dist = distance(hit.location, p.location);
 
         if (current == parent && dist < radius) {
             max_distance = max(dist, max_distance);
-            color += p.color;
+            color += (1 - (dist / (FILTER_K * radius))) * dot(hit.normal, -p.incident) * p.color / 8;
             found++;
         }
     } while (previous != current);
@@ -220,14 +249,30 @@ uint knn_radiance(inout vec3 color, Ray ray, vec3 location, float radius, inout 
 }
 
 
-vec3 estimated_radiance3(Ray ray, vec3 location) {
-    float radius = 0.1;
+vec3 estimated_radiance2(Hit hit) {
+    float radius = 4.0;
+    vec3 color = vec3(0.0);
+
+    for (int i = 0; i < photon_amount; i++) {
+        if (distance(photons[i].location, hit.location) < radius) {
+            color += photons[i].color;
+        }
+    }
+
+    return color / (PI * radius * radius);
+}
+
+
+vec3 estimated_radiance3(Hit hit) {
+    float radius = 0.05;
     float max_radius = EPSILON;
     vec3 color;
 
-    knn_radiance(color, ray, location, radius, max_radius);
+    while (knn_radiance(color, hit, radius, max_radius) < K) {
+        radius *= 1.1;
+    }
 
-    return color / (PI * radius * radius);
+    return color / ((1 - (2 / (3 * FILTER_K))) * (PI * max_radius * max_radius));
 }
 
 
@@ -369,6 +414,11 @@ void custom_shading(inout Ray ray, Hit hit) {
         }
 
         ray.color += ray.strength * (kd * diffuse * mat.color + ks * specular);
+
+        if (ks < EPSILON) {
+            ray.color += ray.strength * estimated_radiance3(hit);
+        }
+        
         ray.strength *= ks;
         ray.origin = hit.location + BIAS * N;
         ray.direction = mix(reflect(D, N), random_direction(N), mat.roughness);
@@ -385,7 +435,7 @@ void custom_shading(inout Ray ray, Hit hit) {
 
 
 vec4 pixel_color(vec2 pixel_coords) {
-    int n = 16;
+    int n = camera.subpixels_per_axis;
     float step = 0.5 / n;
     vec3 result = vec3(0);
 

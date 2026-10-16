@@ -19,14 +19,14 @@ int main(int argc, char *argv[]) {
 
     VulkanHelper helper(headless);
 
-    // // create the photon map for the scene
-    // StagingBuffer photons = [&]{
-    //     PhotonMap photonMap {scene, helper};
-    //     return photonMap.compute();
-    // }();
+    // create the photon map for the scene
+    StagingBuffer photons = [&]{
+        PhotonMap photonMap {scene, helper, true};
+        return photonMap.compute();
+    }();
 
     // pass the scene and args into the raytracer
-    RayTracer raytracer{scene, helper /*, photons */};
+    RayTracer raytracer{scene, helper, photons};
     raytracer.run();
 
     return EXIT_SUCCESS;

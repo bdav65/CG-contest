@@ -2,8 +2,8 @@
 #include "kdify.hpp"
 #include "timer.hpp"
 
-#define LIGHT_PHOTONS 10000
-#define BOUNCES 8
+#define LIGHT_PHOTONS 1000000
+#define BOUNCES 4
 
 
 struct PhotonConfig {
@@ -18,13 +18,18 @@ size_t PhotonMap::photonMapCapacity() {
     uint photons_per_light = LIGHT_PHOTONS;
     uint bounces = BOUNCES;
 
-    return photons_per_light * scene.getLights().size() * (bounces + 1) * sizeof(Photon);
+    if (caustics) {
+        return photons_per_light * scene.getLights().size() * sizeof(Photon);
+    } else {
+        return photons_per_light * scene.getLights().size() * (bounces + 1) * sizeof(Photon);
+    }
 }
 
 
-PhotonMap::PhotonMap(Scene &scene, VulkanHelper &helper):
+PhotonMap::PhotonMap(Scene &scene, VulkanHelper &helper, bool caustics):
     scene(scene),
     vulkanHelper(helper),
+    caustics(caustics),
     config(vulkanHelper, sizeof(PhotonConfig)),
     objects(vulkanHelper, scene.getObjects()),
     spheres(vulkanHelper, scene.getSpheres()),
@@ -44,7 +49,7 @@ void PhotonMap::createResources() {
 
 void PhotonMap::createPipeline() {
     // Create shader module
-    std::vector<char> shaderCode = readFile("./build/shaders/photonmap.comp.spv");
+    std::vector<char> shaderCode = readFile(caustics ? "./build/shaders/causticsmap.comp.spv" : "./build/shaders/photonmap.comp.spv");
 	shaderModule = vulkanHelper.createShaderModule(shaderCode);
 
     // Create descriptor set

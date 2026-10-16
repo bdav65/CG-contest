@@ -3,7 +3,7 @@
 
 #define EPSILON 0.0001
 #define PI 3.14159
-#define K 1
+#define K 16
 
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -11,12 +11,9 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 struct Material {
     vec3 color;
-    float ka;
-    float kd;
-    float ks;
-    uint n;
-    bool is_glass;
-    float nt;
+    float roughness;
+    float IOR;
+    float transparency;
 };
 
 

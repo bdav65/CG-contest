@@ -169,10 +169,10 @@
             "angle": 60,
             "material":
             {
-                "color": [1.0, 0.0, 0.0],
-                "roughness": 0.5,
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 0.0,
                 "IOR": 1.5,
-                "transparency": 0.0
+                "transparency": 1.0
             }
         },
         {
@@ -182,8 +182,8 @@
             "v1": [-11, -38, -891],
             "material":
             {
-                "color": [1.0, 1.0, 1.0],
-                "roughness": 0.5,
+                "color": [0.5, 0.5, 1.0],
+                "roughness": 0.0,
                 "IOR": 1.5,
                 "transparency": 1.0
             }

@@ -11,12 +11,9 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct Material {
     vec3 color;
-    float ka;
-    float kd;
-    float ks;
-    uint n;
-    bool is_glass;
-    float nt;
+    float roughness;
+    float IOR;
+    float transparency;
 };
 
 
@@ -246,12 +243,11 @@ void glass_shading(inout Ray ray, Hit hit) {
         N = -N;
     }
 
-    float ni = inside ? mat.nt : 1.0;
-    float nt = inside ? 1.0 : mat.nt;
+    float ni = inside ? mat.IOR : 1.0;
+    float nt = inside ? 1.0 : mat.IOR;
 
     vec3 refraction = refract(D, N, ni / nt);
 
-    #ifdef FRESNEL
     float k0 = pow((ni - nt) / (ni + nt), 2);
 
     float kr = dot(refraction, refraction) == 0.0 ? 1.0 : k0 + (1 - k0) * pow(1 - dot(-D, N), 5);
@@ -261,25 +257,17 @@ void glass_shading(inout Ray ray, Hit hit) {
         ray.origin = hit.location + BIAS * N;
         ray.direction = reflect(D, N);
     } else {
+        ray.color *= mat.color;
         ray.origin = hit.location - BIAS * N;
         ray.direction = refraction;
     }
-    #else
-    if (dot(refraction, refraction) == 0.0) {
-        ray.origin = hit.location + BIAS * N;
-        ray.direction = reflect(D, N);
-    } else {
-        ray.origin = hit.location - BIAS * N;
-        ray.direction = refraction;
-    }
-    #endif
 }
 
 
 Photon photon_hit(inout Ray ray, Hit hit) {
     Material mat = objects[hit.obj].material;
 
-    float r = noise();
+    float r = noise() * (1 + mat.transparency);
 
     Photon p = {
         ray.color,
@@ -288,28 +276,24 @@ Photon photon_hit(inout Ray ray, Hit hit) {
         0
     };
 
-    if (r <= mat.kd) { // diffuse reflection
+    if (r <= mat.roughness) { // diffuse reflection
         ray.strength = 0.0;
-    } else if (r <= mat.kd + mat.ks) { // specular reflection
+    } else if (r <= 1.0) { // specular reflection
         ray.s = true;
         ray.color *= mat.color;
         ray.origin = p.location;
         ray.direction = reflect(ray.direction, hit.normal);
     } else {
-        // absorption/refraction (todo)
-        if (mat.is_glass) {
-            ray.s = true;
-            glass_shading(ray, hit);
-        } else {
-            ray.strength = 0.0;
-        }
+        // refraction
+        ray.s = true;
+        glass_shading(ray, hit);
     }
 
-    return mat.ks > EPSILON || !ray.s ? MISS : p;
+    return mat.roughness < 1.0 || !ray.s ? MISS : p;
 }
 
 
-void shoot_photon(uint index) {
+bool shoot_photon(uint index) {
     uint l = index / config.photons_per_light;
     uint i = index % config.photons_per_light;
 
@@ -323,23 +307,24 @@ void shoot_photon(uint index) {
         random_direction()
     };
 
-    uint photon_index = index * (config.bounces + 1);
-    int k;
+    Hit hit = intersect_scene(ray);
+    photon_hit(ray, hit);
 
-    for (k = -1; ray.strength > EPSILON && k < config.bounces; k++) {
+    if (!ray.s) {
+        return false;
+    }
+
+    for (int k = 0; ray.strength > EPSILON && k < config.bounces; k++) {
         Hit hit = intersect_scene(ray);
         
         if (!hit.did_hit) {
             break;
         }
 
-        photons[photon_index + k + 1] = photon_hit(ray, hit);
+        photons[index] = photon_hit(ray, hit);
     }
 
-    while (k < config.bounces) {
-        photons[photon_index + k + 1] = MISS;
-        k++;
-    }
+    return ray.strength < EPSILON;
 }
 
 
@@ -351,5 +336,10 @@ void main() {
     }
 
     seed = gl_GlobalInvocationID.x;
-    shoot_photon(i);
+
+    for (int attempt = 0; attempt < 4; attempt++) {
+        if (shoot_photon(i)) {
+            break;
+        }
+    }
 }
