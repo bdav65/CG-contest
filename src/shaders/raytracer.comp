@@ -1,7 +1,6 @@
 #version 460
 #extension GL_EXT_scalar_block_layout : enable
 
-#define FRESNEL
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
@@ -16,8 +15,7 @@ float noise() {
     return float(w) / 4294967295.0;
 }
 
-// This shader is run in little tiles of 8x8x1 pixels
-// We need to specify this because we are using Compute Shaders
+// This shader is run in tiles of 8x8x1 pixels
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 
@@ -66,7 +64,6 @@ struct Hit {
 struct Ray {
     float strength;
     vec3 color;
-    vec3 color_mult;
     vec3 origin;
     vec3 direction;
 };
@@ -128,15 +125,6 @@ layout(binding = 5) readonly buffer PhotonBuffer {
 layout(binding = 6) writeonly uniform image2D output_image;
 
 
-vec3 random_direction() {
-    return normalize(vec3(
-        noise() - 0.5,
-        noise() - 0.5,
-        noise() - 0.5
-    ));
-}
-
-
 vec3 random_direction(vec3 normal) {
     vec3 random = normalize(vec3(
         noise() - 0.5,
@@ -156,7 +144,6 @@ Ray generate_ray(vec2 coord) {
     Ray r = {
         1.0,
         vec3(0.0),
-        vec3(1.0, 1.0, 1.0),
         camera.origin,
         vec3(
             2 * (coord.x) / camera.resolution.x - 1,
@@ -170,33 +157,7 @@ Ray generate_ray(vec2 coord) {
 }
 
 
-// float fresnel_reflection(vec3 I, vec3 N, float n) {
-//     incoming_angle = clamp(incoming_angle, -1, 1);
-
-//     if (incoming_angle < 0) {
-//         n = 1.0 / n;
-//         incoming_angle *= -1;
-//     }
-
-//     float 
-
-//     <<Compute  for Fresnel equations using Snell’s law>> 
-//        Float sin2Theta_i = 1 - Sqr(cosTheta_i);
-//        Float sin2Theta_t = sin2Theta_i / Sqr(eta);
-//        if (sin2Theta_t >= 1)
-//            return 1.f;
-    
-//        Float cosTheta_t = SafeSqrt(1 - sin2Theta_t);
-//     float refracted_angle
-
-//     float parallel = (eta * cosTheta_i - cosTheta_t) /
-//                    (eta * cosTheta_i + cosTheta_t);
-//     float perpendicular = (cosTheta_i - eta * cosTheta_t) /
-//                    (cosTheta_i + eta * cosTheta_t);
-//     return (Sqr(r_parl) + Sqr(r_perp)) / 2;
-// }
-
-
+// global heap for k-nn search
 struct Heap {
     uint n;
     uint indices[K];
@@ -277,7 +238,7 @@ bool heap_could_accept(float distance, vec3 x) {
 }
 
 
-vec3 knn_radiance(Hit hit) {
+vec3 photon_radiance(Hit hit) {
     const vec3 x = hit.location;
 
     vec3 color = vec3(0.0);
@@ -333,25 +294,6 @@ vec3 knn_radiance(Hit hit) {
     }
 
     return color / ((1 - (2 / (3 * FILTER_K))) * PI * r * r);
-}
-
-
-vec3 estimated_radiance2(Hit hit) {
-    float radius = 1.0;
-    vec3 color = vec3(0.0);
-
-    for (int i = 0; i < photon_amount; i++) {
-        if (distance(photons[i].location, hit.location) < radius) {
-            color += photons[i].color;
-        }
-    }
-
-    return color / (PI * radius * radius);
-}
-
-
-vec3 estimated_radiance3(Hit hit) {
-    return knn_radiance(hit);
 }
 
 
@@ -448,73 +390,59 @@ Hit intersect_scene(Ray ray) {
 }
 
 
-void custom_shading(inout Ray ray, Hit hit) {
-    Material mat = objects[hit.obj].material;
+void ray_interaction(inout Ray ray, const Hit hit) {
+    const Material mat = objects[hit.obj].material;
 
-    // calculate fresnel to determine reflectivity
     vec3 N = hit.normal;
-    vec3 D = normalize(ray.direction);
 
-    bool inside = dot(hit.normal, D) > 0;
+    bool inside = dot(hit.normal, ray.direction) > 0;
 
     if (inside) {
         N = -N;
     }
 
+    // direct illumination
+    for (int i = 0; i < light_amount; i++) {
+        vec3 L = normalize(lights[i].location - hit.location);
+
+        Ray shadow = {0, vec3(0), hit.location + BIAS * N, L};
+        Hit shadowHit = intersect_scene(shadow);
+
+        if (shadowHit.did_hit && shadowHit.t < length(lights[i].location - hit.location)) {
+            continue;
+        }
+
+        ray.color += ray.strength * mat.color * mat.roughness * max(0, dot(L, N)) * lights[i].color;
+    }
+
+    // sample caustics for non-specular materials
+    if (mat.roughness > EPSILON) {
+        ray.color += ray.strength * mat.color * mat.roughness * photon_radiance(hit);
+    }
+
+    // choose a new ray
     float ni = inside ? mat.IOR : 1.0;
     float nt = inside ? 1.0 : mat.IOR;
 
-    float r0 = pow((ni - nt) / (ni + nt), 2);
-    float kr = r0 + (1 - r0) * pow(1 - dot(-D, N), 5);
+    vec3 refraction = refract(ray.direction, N, ni / nt);
 
-    if (mat.transparency < EPSILON || noise() < kr + mat.roughness * (1 - mat.transparency)) { // reflect
-        float kd = mat.roughness;
-        float ks = 1 - mat.roughness;
+    float k0 = pow((ni - nt) / (ni + nt), 2);
+    float kr = dot(refraction, refraction) == 0.0 ? 1.0 : k0 + (1 - k0) * pow(1 - dot(-ray.direction, N), 5);
 
-        vec3 diffuse = vec3(0.0);
-        vec3 specular = vec3(0.0);
-
-        for (int i = 0; i < light_amount; i++) {
-            vec3 L = normalize(lights[i].location - hit.location);
-
-            Ray shadow = {0, vec3(0), vec3(0), hit.location + BIAS * N, L};
-            Hit shadowHit = intersect_scene(shadow);
-
-            if (shadowHit.did_hit && shadowHit.t < length(lights[i].location - hit.location)) {
-                continue;
-            }
-
-            diffuse += max(0, dot(N, L)) * lights[i].color;
-
-            if (max(0, dot(N, L)) > 0) {
-                vec3 R = reflect(-L, N);
-                specular += pow(max(0, dot(R, -D)), pow(2, ks / 0.125)) * lights[i].color;
-            }
-        }
-
-        ray.color += ray.strength * (kd * diffuse * mat.color + ks * specular);
-
-        if (ks < EPSILON && photon_amount > 0) {
-            ray.color += ray.strength * estimated_radiance3(hit);
-        }
-        
-        ray.strength *= ks;
-        ray.origin = hit.location + BIAS * N;
-        ray.direction = mix(reflect(D, N), random_direction(N), mat.roughness);
-    } else { // refract
+    if (noise() * mat.transparency > kr) {
+        ray.strength *= (1 - mat.roughness);
         ray.origin = hit.location - BIAS * N;
-        ray.direction = refract(D, N, ni / nt);
-
-        if (!inside) {
-            vec3 inverse_color = vec3(1.0) - mat.color;
-            ray.color_mult *= vec3(1.0) - ((1 - mat.roughness) * inverse_color);
-        }
+        ray.direction = mix(refract(ray.direction, N, ni / nt), random_direction(N), mat.roughness);
+    } else {
+        ray.strength *= (1 - mat.roughness);
+        ray.origin = hit.location + BIAS * hit.normal;
+        ray.direction = mix(reflect(ray.direction, N), random_direction(N), mat.roughness);
     }
 }
 
 
 vec4 pixel_color(vec2 pixel_coords) {
-    int n = camera.subpixels_per_axis;
+    int n = 8;
     float step = 0.5 / n;
     vec3 result = vec3(0);
 
@@ -529,10 +457,10 @@ vec4 pixel_color(vec2 pixel_coords) {
                     break;
                 }
 
-                custom_shading(ray, hit);
+                ray_interaction(ray, hit);
             }
 
-            result += ray.color * ray.color_mult;
+            result += ray.color;
         }
     }
 
