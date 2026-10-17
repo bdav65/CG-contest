@@ -2,7 +2,7 @@
 #include "kdify.hpp"
 #include "timer.hpp"
 
-#define PHOTONS 50000
+#define PHOTONS 25000
 #define BOUNCES 32
 
 

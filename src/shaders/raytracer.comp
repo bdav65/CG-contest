@@ -4,7 +4,7 @@
 #define EPSILON 0.0001
 #define BIAS 0.001
 #define PI 3.14159
-#define K 60
+#define K 40
 #define FILTER_K 1.2
 
 uint seed;
@@ -442,7 +442,7 @@ void ray_interaction(inout Ray ray, const Hit hit) {
 
 
 vec4 pixel_color(vec2 pixel_coords) {
-    int n = 8;
+    int n = camera.subpixels_per_axis;
     float step = 0.5 / n;
     vec3 result = vec3(0);
 
