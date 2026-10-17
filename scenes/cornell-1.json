@@ -1,16 +1,16 @@
 {
     "Eye": [0, 0, -1500],
-    "MaxBounces": 8,
+    "MaxBounces": 5,
     "SubpixelsPerAxis": 4,
     "Caustics": {
-        "PhotonCount": 50000,
+        "PhotonCount": 25000,
         "MaxBounces": 32,
         "MaxTries": 256
     },
     "Lights": [
         {
             "position": [0, 98.5, -963],
-            "color": [0.9, 0.85, 0.8]
+            "color": [0.9, 0.88, 0.86]
         }
     ],
     "Objects": [
@@ -166,22 +166,20 @@
         },
         {
             "type": "sphere",
-            "comment": "Red sphere",
+            "comment": "Small sphere",
             "position": [45, -70, -983],
             "radius": 29.3,
-            "rotation": [1, 1, 0],
-            "angle": 60,
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "roughness": 0.1,
+                "roughness": 0.0,
                 "IOR": 1.5,
                 "transparency": 1.0
             }
         },
         {
             "type": "sphere",
-            "comment": "Glass box",
+            "comment": "Big sphere",
             "position": [-50, -50, -1020],
             "radius": 50,
             "material":

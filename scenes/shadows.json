@@ -20,6 +20,7 @@
     "Objects": [
         {
             "type": "sphere",
+            "comment": "Small glass sphere",
             "position": [-200, 0, 0],
             "radius": 50,
             "material":
@@ -32,6 +33,7 @@
         },
         {
             "type": "sphere",
+            "comment": "Big sphere",
             "position": [200, 0, 0],
             "radius": 150,
             "material":
@@ -44,6 +46,7 @@
         },
         {
             "type": "triangle",
+            "comment": "Wall 1",
             "v0": [-300, -400, -400],
             "v1": [-300, 400, -400],
             "v2": [-300, 400, 400],
@@ -58,6 +61,7 @@
         },
         {
             "type": "triangle",
+            "comment": "Wall 2",
             "v0": [-300, -400, -400],
             "v1": [-300, -400, 400],
             "v2": [-300, 400, 400],
@@ -72,6 +76,7 @@
         },
         {
             "type": "triangle",
+            "comment": "Small triangle",
             "v0": [-90, 10, 10],
             "v1": [-100, -10, 0],
             "v2": [-100, 10, -10],

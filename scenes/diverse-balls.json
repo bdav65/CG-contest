@@ -72,11 +72,9 @@
         },
         {
             "type": "sphere",
-            "comment": "Orange basketball",
+            "comment": "Orange sphere",
             "position": [110, 130, -200],
             "radius": 50,
-            "rotation": [0,1,0.7],
-            "angle": 20,
             "material":
             {
                 "color": [1.0, 0.5, 0.0],

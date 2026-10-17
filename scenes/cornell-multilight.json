@@ -174,7 +174,7 @@
         },
         {
             "type": "sphere",
-            "comment": "Red sphere",
+            "comment": "Small sphere",
             "position": [45, -70, -983],
             "radius": 29.3,
             "rotation": [1, 1, 0],
@@ -189,7 +189,7 @@
         },
         {
             "type": "sphere",
-            "comment": "Glass box",
+            "comment": "Big sphere",
             "position": [-50, -50, -1020],
             "radius": 50,
             "material":

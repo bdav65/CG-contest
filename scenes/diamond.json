@@ -1,9 +1,9 @@
 {
     "Eye": [0, 200, -1000],
     "MaxBounces": 8,
-    "SubpixelsPerAxis": 4,
+    "SubpixelsPerAxis": 12,
     "Caustics": {
-        "PhotonCount": 64000,
+        "PhotonCount": 50000,
         "MaxBounces": 32,
         "MaxTries": 256
     },
@@ -30,6 +30,7 @@
         },
         {
             "type": "aabb",
+            "comment": "Box",
             "invert": true,
             "v0": [-250, 0, -1000],
             "v1": [250, 500, 500],
