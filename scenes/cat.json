@@ -1,0 +1,46 @@
+{
+    "Eye": [0, 400, -3000],
+    "MaxBounces": 8,
+    "SubpixelsPerAxis": 4,
+    "Caustics": {
+        "PhotonCount": 25000,
+        "MaxBounces": 32,
+        "MaxTries": 256
+    },
+    "Lights": [
+        {
+            "position": [0, 990, 150],
+            "color": [0.9, 0.9, 0.9]
+        }
+    ],
+    "Objects": [
+        {
+            "type": "model",
+            "comment": "Diamond model",
+            "file": "scenes/models/cat.obj",
+            "offset": [0, 0, 0],
+            "scale": 1.0,
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 0.05,
+                "IOR": 1.33,
+                "transparency": 1.0
+            }
+        },
+        {
+            "type": "aabb",
+            "comment": "Box",
+            "invert": true,
+            "v0": [-750, -200, -3000],
+            "v1": [750, 1000, 1000],
+            "material":
+            {
+                "color": [1.0, 1.0, 1.0],
+                "roughness": 1.0,
+                "IOR": 1.0,
+                "transparency": 0.0
+            }
+        }
+    ]
+}

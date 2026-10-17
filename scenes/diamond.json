@@ -1,7 +1,7 @@
 {
     "Eye": [0, 200, -1000],
     "MaxBounces": 8,
-    "SubpixelsPerAxis": 12,
+    "SubpixelsPerAxis": 4,
     "Caustics": {
         "PhotonCount": 50000,
         "MaxBounces": 32,
