@@ -5,9 +5,9 @@
 
 
 RayTracer::RayTracer(Scene &scene, VulkanHelper &helper, StagingBuffer _photons):
-    scene(scene),
     vulkanHelper(helper),
-    camera(vulkanHelper, sizeof(Camera)),
+    config(scene.getRaytracerConfig()),
+    configBuffer(vulkanHelper, sizeof(RaytracerConfig)),
     objects(vulkanHelper, scene.getObjects()),
     spheres(vulkanHelper, scene.getSpheres()),
     triangles(vulkanHelper, scene.getTriangles()),
@@ -37,20 +37,9 @@ void RayTracer::run() {
 
 void RayTracer::createResources() {
     VkExtent2D outputSize = vulkanHelper.outputSize();
-    auto [textureData, textureSize] = readImage(scene.texturePath());
 
-    // Create images
     outputImage = vulkanHelper.createImage(VK_IMAGE_USAGE_STORAGE_BIT, outputSize);
-    textureImage = vulkanHelper.createImage(VK_IMAGE_USAGE_SAMPLED_BIT, textureSize);
-    textureSampler = vulkanHelper.createSampler(VK_FILTER_LINEAR);
-
-    // Memory
-    VkDeviceMemory outputImageMemory = vulkanHelper.allocateImageMemory(outputImage);
-    VkDeviceMemory textureImageMemory = vulkanHelper.allocateImageMemory(textureImage);
-    this->allocations = {outputImageMemory, textureImageMemory};
-
-    // Write texture
-    vulkanHelper.uploadToImage(textureData, textureImage, textureSize);
+    outputImageMemory = vulkanHelper.allocateImageMemory(outputImage);
 }
 
 
@@ -62,7 +51,7 @@ void RayTracer::createPipeline() {
     // Create descriptor set
     std::vector<ResourceDescriptor> descriptors {7};
 
-    camera.setDescriptor(descriptors[0]);
+    configBuffer.setDescriptor(descriptors[0]);
     objects.setDescriptor(descriptors[1]);
     spheres.setDescriptor(descriptors[2]);
     triangles.setDescriptor(descriptors[3]);
@@ -87,17 +76,8 @@ void RayTracer::drawFrame() {
 	// Update uniform buffer
     VkExtent2D outputSize = vulkanHelper.outputSize();
 
-    Camera currentCamera {
-        scene.cameraOrigin(),
-        4.0,
-        glm::ivec2(outputSize.width, outputSize.height),
-        4,
-        scene.renderShadows(),
-        scene.maxBounces(),
-    };
+	memcpy(configBuffer.mapped, &config, sizeof(RaytracerConfig));
 
-	memcpy(camera.mapped, &currentCamera, sizeof(Camera));
-    
     // Get the command buffer
     VkCommandBuffer commandBuffer = vulkanHelper.getCommandBuffer();
 
@@ -126,21 +106,20 @@ RayTracer::~RayTracer() {
     VkDevice device = vulkanHelper.getDevice();
     vkDeviceWaitIdle(device); // wait until all submitted stuff is done
 
-    camera.destroy();
+    configBuffer.destroy();
     objects.destroy();
     spheres.destroy();
     triangles.destroy();
     lights.destroy();
     photons.destroy();
 
-    vkDestroyImage(device, this->outputImage, nullptr);
-    vkDestroyImage(device, this->textureImage, nullptr);
-    vkDestroySampler(device, this->textureSampler, nullptr);
-    for (auto alloc : this->allocations)
-        vkFreeMemory(device, alloc, nullptr); 
+    vkDestroyImage(device, outputImage, nullptr);
+    vkFreeMemory(device, outputImageMemory, nullptr);
+
     vkDestroyDescriptorSetLayout(device, this->descriptorSetLayout, nullptr); 
     vkDestroyPipelineLayout(device, this->pipelineLayout, nullptr);
     vkDestroyShaderModule(device, shaderModule, nullptr); 
     vkDestroyPipeline(device, this->pipeline, nullptr);
+
     vulkanHelper.terminate();
 }

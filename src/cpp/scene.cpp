@@ -5,6 +5,49 @@
 #include <fstream>
 
 
+static glm::vec3 getVec3(Json const &v) {
+    return glm::vec3(v[0], v[1], v[2]);
+}
+
+
+template<typename T>
+static T getOr(Json const &json, std::string field, T other) {
+    return json.contains(field) ? static_cast<T>(json[field]) : other;
+}
+
+
+static Material getMaterial(Json const &mat) {
+    return Material {
+        getVec3(mat["color"]),
+        mat["roughness"],
+        mat["IOR"],
+        mat["transparency"]
+    };
+}
+
+
+void Scene::loadCausticsConfig(Json const &root) {
+    if (!root.contains("Caustics")) {
+        causticsConfig.photonCount = 0;
+    }
+
+    Json const &cfg = root["Caustics"];
+
+    causticsConfig.photonCount = cfg["PhotonCount"];
+    causticsConfig.maxBounces = getOr(cfg, "MaxBounces", 32);
+    causticsConfig.maxTries = getOr(cfg, "MaxTries", 256);
+}
+
+
+void Scene::loadRaytracerConfig(Json const &root) {
+    raytracerConfig.cameraOrigin = getVec3(root["Eye"]);
+    raytracerConfig.focalLength = 4.0;
+    raytracerConfig.resolution = {512, 512},
+    raytracerConfig.maxBounces = getOr(root, "MaxBounces", 8);
+    raytracerConfig.subpixelsPerAxis = getOr(root, "SubpixelsPerAxis", 4);
+}
+
+
 Scene::Scene(const std::filesystem::path& path) {
     std::ifstream inputFile(path);
     if (!inputFile)
@@ -13,18 +56,10 @@ Scene::Scene(const std::filesystem::path& path) {
     Json jsonScene;
     inputFile >> jsonScene;
 
-    this->texture = path.parent_path() / jsonScene["Texture"];
-    loadCameraInformation(jsonScene);
+    loadCausticsConfig(jsonScene);
+    loadRaytracerConfig(jsonScene);
     loadObjects(jsonScene);
     loadLights(jsonScene);
-}
-
-
-void Scene::loadCameraInformation(Json const &root) {
-    Json const &eye = root["Eye"];
-    this->cameraLocation = glm::vec3(eye[0], eye[1], eye[2]);
-    this->shadows = root["Shadows"];
-    this->bounces = root["MaxBounces"];
 }
 
 
@@ -114,18 +149,7 @@ void Scene::loadLights(Json const &root) {
 }
 
 
-/* Returns the Material object from the current material node */
-Material getMaterial(Json const &mat) {
-    return Material {
-        glm::vec3(mat["color"][0], mat["color"][1], mat["color"][2]),
-        mat["roughness"],
-        mat["IOR"],
-        mat["transparency"]
-    };
-}
-
-
-glm::vec3 toGlmVec(objl::Vector3 v) {
+static glm::vec3 toGlmVec(objl::Vector3 v) {
     return glm::vec3 {v.X, v.Y, v.Z};
 }
 
@@ -146,10 +170,10 @@ void Scene::loadModel(uint objectIndex, Json const &root) {
 
     objl::Mesh mesh = loader.LoadedMeshes.front();
 
-    for (int t = 0; t < mesh.Indices.size(); t += 3) {
-        int v0 = mesh.Indices[t];
-        int v1 = mesh.Indices[t + 1];
-        int v2 = mesh.Indices[t + 2];
+    for (size_t t = 0; t < mesh.Indices.size(); t += 3) {
+        uint v0 = mesh.Indices[t];
+        uint v1 = mesh.Indices[t + 1];
+        uint v2 = mesh.Indices[t + 2];
 
         glm::vec3 normal = glm::normalize(toGlmVec(mesh.Vertices[v0].Normal + mesh.Vertices[v1].Normal + mesh.Vertices[v2].Normal));
 
@@ -161,4 +185,12 @@ void Scene::loadModel(uint objectIndex, Json const &root) {
             normal
         });
     }
+}
+
+
+CausticsConfig Scene::getCausticsConfig() {
+    causticsConfig.photonsPerLight = causticsConfig.photonCount / lights.size();
+    causticsConfig.photonCount = causticsConfig.photonsPerLight * lights.size();
+
+    return causticsConfig;
 }

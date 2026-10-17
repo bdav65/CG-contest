@@ -7,11 +7,11 @@
 
 class RayTracer {
     bool headless;
-    Scene &scene;
     VulkanHelper &vulkanHelper;
+    RaytracerConfig config;
  
     // Resources
-    UniformBuffer camera;
+    UniformBuffer configBuffer;
     InputBuffer objects;
     InputBuffer spheres;
     InputBuffer triangles;
@@ -19,9 +19,8 @@ class RayTracer {
     InputBuffer photons;
 
     VkImage outputImage;
-    VkImage textureImage;
-    VkSampler textureSampler;
-    std::vector<VkDeviceMemory> allocations;
+    VkDeviceMemory outputImageMemory;
+
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
 

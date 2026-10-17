@@ -82,14 +82,14 @@ vec3 ray_at(Ray ray, float t) {
 }
 
 
-layout(std430, binding = 0) readonly uniform Camera {
-    vec3 origin;
+layout(std430, binding = 0) readonly uniform Config {
+    vec3 camera_origin;
     float focal_len;
     uvec2 resolution;
     int subpixels_per_axis;
-    bool render_shadows;
+    bool _;
     int bounces;
-} camera;
+} config;
 
 
 layout(std430, binding = 1) readonly buffer ObjectBuffer {
@@ -141,18 +141,14 @@ vec3 random_direction(vec3 normal) {
 
 
 Ray generate_ray(vec2 coord) {
-    Ray r = {
-        1.0,
-        vec3(0.0),
-        camera.origin,
-        vec3(
-            2 * (coord.x) / camera.resolution.x - 1,
-            -2 * (coord.y) / camera.resolution.y + 1,
-            camera.focal_len
-        )
-    };
+    vec3 pixel_direction = normalize(vec3(
+        2 * (coord.x) / config.resolution.x - 1,
+        -2 * (coord.y) / config.resolution.y + 1,
+        config.focal_len
+    ));
 
-    r.direction = normalize(r.direction);
+    Ray r = {1.0, vec3(0.0), config.camera_origin, pixel_direction};
+
     return r;
 }
 
@@ -442,7 +438,7 @@ void ray_interaction(inout Ray ray, const Hit hit) {
 
 
 vec4 pixel_color(vec2 pixel_coords) {
-    int n = camera.subpixels_per_axis;
+    uint n = config.subpixels_per_axis;
     float step = 0.5 / n;
     vec3 result = vec3(0);
 
@@ -450,7 +446,7 @@ vec4 pixel_color(vec2 pixel_coords) {
         for (int j = 0; j < n; j++) {
             Ray ray = generate_ray(pixel_coords + vec2(step * (2 * i + 1), step * (2 * j + 1)));
 
-            for (int k = -1; ray.strength > EPSILON && k < camera.bounces; k++) {
+            for (int k = -1; ray.strength > EPSILON && k < config.bounces; k++) {
                 Hit hit = intersect_scene(ray);
 
                 if (!hit.did_hit) {
@@ -470,7 +466,7 @@ vec4 pixel_color(vec2 pixel_coords) {
 
 void main() {
     ivec2 pixel_coordinates = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = ivec2(camera.resolution);
+    ivec2 size = ivec2(config.resolution);
 
     if (any(greaterThan(pixel_coordinates, size)))
         return;

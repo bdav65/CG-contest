@@ -15,13 +15,11 @@ int main(int argc, char *argv[]) {
     }
 
     Scene scene{argv[1]};
-    bool headless = argc == 3;
-
-    VulkanHelper helper(headless);
+    VulkanHelper helper(argc == 3);
 
     // create the photon map for the scene
     StagingBuffer photons = [&]{
-        PhotonMap photonMap {scene, helper, true};
+        PhotonMap photonMap {scene, helper};
         return photonMap.compute();
     }();
 

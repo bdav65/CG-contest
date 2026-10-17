@@ -14,11 +14,10 @@ struct Photon {
 
 
 class PhotonMap {
-    Scene &scene;
     VulkanHelper &vulkanHelper;
-    bool caustics;
+    CausticsConfig config;
  
-    UniformBuffer config;
+    UniformBuffer configBuffer;
     InputBuffer objects;
     InputBuffer spheres;
     InputBuffer triangles;
@@ -33,12 +32,10 @@ class PhotonMap {
     VkPipelineLayout pipelineLayout;
 
     public:
-        PhotonMap(Scene &scene, VulkanHelper &helper, bool caustics);
+        PhotonMap(Scene &scene, VulkanHelper &helper);
         [[nodiscard]] StagingBuffer compute();
         ~PhotonMap();
 
     private:
-        size_t photonMapCapacity();
-        void createResources();
         void createPipeline();
 };
