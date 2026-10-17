@@ -4,6 +4,7 @@
 #define FRESNEL
 #define EPSILON 0.0001
 #define BIAS 0.001
+#define ENERGY_PER_LIGHT 50000
 
 // 1D array, will have to find out if these numbers are good
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -255,7 +256,7 @@ bool specular_interaction(inout Ray ray, const Hit hit) {
 
     if (noise() < mat.roughness) { // randomly chosen diffuse interation
         Photon p = {
-            ray.color,
+            ray.color * (float(ENERGY_PER_LIGHT) / config.photons_per_light), // scaling factor so more photons don't become overly bright
             ray.direction,
             hit.location + BIAS * N,
             0

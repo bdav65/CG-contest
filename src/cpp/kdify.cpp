@@ -2,255 +2,13 @@
 
 #include <queue>
 
-#define DEBUG
-
-#ifdef DEBUG
-#include <iostream>
-
-
-static std::ostream &operator<<(std::ostream &os, const glm::vec3 &v) {
-    return os << '[' << v.x << ", " << v.y << ", " << v.z << ']';
-}
-
-
-static std::ostream &operator<<(std::ostream &os, const Photon &p) {
-    return os << "Photon {" << p.color << ", " << p.incident << ", " << p.location << ", " << p.axis << '}';
-}
-
-#endif
-
 
 struct Node {
     int i, l, r;
 };
 
 
-struct Heap {
-    uint n;
-    std::vector<uint> photons;
-    std::vector<float> sqdists;
-};
-
-
-static const uint K = 10;
-
-
-void heap_put(Heap &h, uint p, float d) {
-    uint i = h.n;
-
-    if (i < K) {
-        while (i > 0) {
-            uint p = (i - 1) / 2;
-
-            if (h.sqdists[p] < d) {
-                h.photons[i] = h.photons[p];
-                h.sqdists[i] = h.sqdists[p];
-                i = p;
-            } else {
-                break;
-            }
-        }
-
-        h.photons[i] = p;
-        h.sqdists[i] = d;
-
-        h.n++;
-        return;
-    }
-
-    if (h.sqdists[0] < d) {
-        return;
-    }
-
-    i = 0;
-
-    while (i * 2 < h.n) {
-        uint l = i * 2 + 1;
-        uint r = i * 2 + 2;
-
-        float dl = l < h.n ? h.sqdists[l] : -INFINITY;
-        float dr = r < h.n ? h.sqdists[r] : -INFINITY;
-
-        if (dl > dr && d < dl) {
-            h.photons[i] = h.photons[l];
-            h.sqdists[i] = dl;
-            i = l;
-        } else if (dl < dr && d < dr) {
-            h.photons[i] = h.photons[r];
-            h.sqdists[i] = dr;
-            i = r;
-        } else {
-            break;
-        }
-    }
-
-    h.photons[i] = p;
-    h.sqdists[i] = d;
-}
-
-
-Heap nearest_photons(Photon *photons, int n, glm::vec3 location) {
-    Heap results = {0};
-    results.photons.resize(K);
-    results.sqdists.resize(K);
-
-    uint previous = 0;
-    uint current = 0;
-    uint steps = 0;
-
-    do {
-        // std::cout << "at photon " << current << '\n';
-        Photon p = photons[current];
-
-        // update best distance
-        float d = glm::distance(location, p.location);
-
-        heap_put(results, current, d);
-
-        uint good, bad;
-        uint parent = current > 0 ? (current - 1) / 2 : 0;
-
-        float axis_distance = location[p.axis] - p.location[p.axis];
-
-        if (axis_distance < 0) {
-            good = 2 * current + 1;
-            bad  = 2 * current + 2;
-        } else {
-            good = 2 * current + 2;
-            bad  = 2 * current + 1;
-        }
-        
-        if (good < n && previous <= current) { // came from parent (or started from root)
-            previous = current;
-            current = good;
-        } else if (previous == good) { // came from "good" subtree
-            if (bad < n && std::abs(axis_distance) < results.sqdists[0]) { // there might be a better point on the "bad" side
-                previous = current;
-                current = bad;
-            } else {
-                previous = current;
-                current = parent;
-            }
-        } else { // came from "bad" subtree
-            previous = current;
-            current = parent;
-        }
-
-        steps++;
-    } while (previous != current);
-
-    std::cout << '(' << steps << " steps)";
-
-    return results;
-}
-
-
-// https://stackoverflow.com/questions/5289613/generate-random-float-between-two-floats
-float randf(float a, float b) {
-    float random = ((float) rand()) / (float) RAND_MAX;
-    float diff = b - a;
-    float r = random * diff;
-    return a + r;
-}
-
-
-static void verify_nearest(int samples, Photon *data, int n) {
-    glm::vec3 minimum {INFINITY, INFINITY, INFINITY};
-    glm::vec3 maximum {-INFINITY, -INFINITY, -INFINITY};
-
-    for (int i = 0; i < n; i++) {
-        minimum = glm::min(minimum, data[i].location);
-        maximum = glm::max(maximum, data[i].location);
-    }
-
-    minimum *= 1.2;
-    maximum *= 1.2;
-
-    for (int i = 0; i < samples; i++) {
-        glm::vec3 test {
-            randf(minimum.x, maximum.x),
-            randf(minimum.y, maximum.y),
-            randf(minimum.z, maximum.z)
-        };
-
-        std::cout << "Testing with location " << test << '\n';
-    
-        Heap naive = {0};
-        naive.photons.resize(K);
-        naive.sqdists.resize(K);
-
-        for (int j = 0; j < n; j++) {
-            float d = glm::distance(test, data[j].location);
-
-            std::cout << "NV Inserting " << j << ", " << d << " onto heap\n";
-            heap_put(naive, j, d);
-            for (int i = 0; i < naive.n; i++) {
-                std::cout << '(' << naive.photons[i] << ", " << naive.sqdists[i] << ") ";
-            }
-            std::cout << '\n';
-        }
-
-        std::cout << '(' << n << " steps)" "\tNaive gave photons ";
-        for (uint p : naive.photons) {
-            std::cout << p << ' ';
-        }
-        std::cout << '\n';
-
-        Heap kd = nearest_photons(data, n, test);
-
-        std::cout << "\tK-NN gave photons ";
-        for (uint p : kd.photons) {
-            std::cout << p << ' ';
-        }
-        std::cout << '\n';
-    }
-}
-
-
-static std::pair<glm::vec3, glm::vec3> verify_kd_tree_rec(int i, Photon *data, int n) {
-    int l = i * 2 + 1;
-    int r = i * 2 + 2;
-
-    Photon p = data[i];
-
-    glm::vec3 minimum = p.location;
-    glm::vec3 maximum = p.location;
-
-    if (l < n) {
-        auto [lmin, lmax] = verify_kd_tree_rec(l, data, n);
-
-        if (lmax[p.axis] > p.location[p.axis] + 0.01) {
-            std::cout << p << " has invalid left child " << l << ' ' << data[l] << " with bounds " << lmin << ", " << lmax << std::endl;
-            assert(lmax[p.axis] < p.location[p.axis]);
-        }
-
-        minimum = glm::min(minimum, lmin);
-        maximum = glm::max(maximum, lmax);
-    }
-
-    if (r < n) {
-        auto [rmin, rmax] = verify_kd_tree_rec(r, data, n);
-
-        if (rmin[p.axis] < p.location[p.axis] - 0.01) {
-            std::cout << p << " has invalid right child " << r << ' ' << data[r] << " with bounds " << rmin << ", " << rmax << std::endl;
-            assert(rmin[p.axis] > p.location[p.axis]);
-        }
-
-
-        minimum = glm::min(minimum, rmin);
-        maximum = glm::max(maximum, rmax);
-    }
-
-    return {minimum, maximum};
-}
-
-
-static void verify_kd_tree(Photon *data, int n) {
-    verify_kd_tree_rec(0, data, n);
-}
-
-
-int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
+static int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
     // std::cout << "Call " << l << ", " << r << '\n';
 
     if (r <= l) {
@@ -276,8 +34,6 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
 
     int pivot = l + ln;
 
-    // std::cout << "Left receives " << ln << " items, right " << r - l - ln - 1 << '\n';
-
     // Find bounding coordinates
     glm::vec3 minimum {INFINITY, INFINITY, INFINITY};
     glm::vec3 maximum {-INFINITY, -INFINITY, -INFINITY};
@@ -287,8 +43,6 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
         maximum = glm::max(maximum, data[nodes[i].i].location);
     }
 
-    // std::cout << "Minimum " << minimum << " and maximum " << maximum << '\n';
-
     glm::vec3 delta = maximum - minimum;
     float dim = glm::max(delta.x, glm::max(delta.y, delta.z));
 
@@ -297,8 +51,6 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
         if (dim != delta[d]) {
             continue;
         }
-
-        // std::cout << "Splitting on axis " << d << std::endl;
 
         std::nth_element(nodes.begin() + l, nodes.begin() + pivot, nodes.begin() + r, [&](Node const &n1, Node const &n2){
             return data[n1.i].location[d] < data[n2.i].location[d];
@@ -320,10 +72,6 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
             }
         }
 
-        // std::sort(nodes.begin() + l, nodes.begin() + r, [&](Node const &n1, Node const &n2){
-        //     return data[n1.i].location[d] < data[n2.i].location[d];
-        // });
-
         data[nodes[pivot].i].axis = d;
 
         break;
@@ -332,8 +80,6 @@ int kdifyRecursive(std::vector<Node> &nodes, int l, int r, Photon *data) {
     // recurse to find left and right children
     nodes[pivot].l = kdifyRecursive(nodes, l, pivot, data);
     nodes[pivot].r = kdifyRecursive(nodes, pivot + 1, r, data);
-
-    // std::cout << "\tNode " << data[nodes[pivot].i] << " has children " << nodes[pivot].l << ' ' << data[nodes[nodes[pivot].l].i].location << " and " << nodes[pivot].r << ' ' << data[nodes[nodes[pivot].r].i].location << '\n';
 
     return pivot;
 }
@@ -360,8 +106,6 @@ void kdify(Photon *data, int n) {
         Node current = nodes[waiting.front()];
         waiting.pop();
 
-        // std::cout << "setting " << current.i << " -> " << i << std::endl;
-
         indices[current.i] = i;
 
         if (current.l >= 0) {
@@ -373,12 +117,6 @@ void kdify(Photon *data, int n) {
         }
     }
 
-    // for (int i = 0; i < n; i++) {
-    //     std::cout << indices[i] << ' ';
-    // }
-
-    // std::cout << '\n';
-
     // do the actual shuffling
     for (int i = 0; i < n;) {
         if (i == indices[i]) {
@@ -389,33 +127,4 @@ void kdify(Photon *data, int n) {
             std::swap(indices[i], indices[indices[i]]);
         }
     }
-
-    verify_kd_tree(data, n);
-    // verify_nearest(1, data, n);
 }
-
-
-// void kdify(Photon *data, int n) {
-//     std::vector<Photon> tags, indices;
-
-//     tags.resize(n);
-//     indices.resize(n);
-
-//     for (int i = 0; i < n; i++) {
-//         indices[i].location.x = i;
-//     }
-
-//     for (int l = 0; l <= ceil(log2(n)); l++) {
-//         int dimension = l % 3;
-
-//         for (int i = 0; i < n; i++) {
-//             indices[i].location.x += i * l - dimension;
-//             indices[i].location.y *= i - l - dimension;
-//             indices[i].location.z *= i * l - dimension;
-//         }
-
-//         std::sort(indices.begin(), indices.end(), [&](Photon const &n1, Photon const &n2){
-//             return n1.location[dimension] < n2.location[dimension];
-//         });
-//     }
-// }
