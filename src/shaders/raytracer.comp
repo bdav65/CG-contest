@@ -239,6 +239,10 @@ vec3 photon_radiance(Hit hit) {
 
     vec3 color = vec3(0.0);
 
+    if (photon_amount < K) {
+        return color;
+    }
+
     uint previous = 0;
     uint current = 0;
 
