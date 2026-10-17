@@ -290,7 +290,7 @@ vec3 photon_radiance(Hit hit) {
     for (int i = 0; i < h.n; i++) {
         Photon p = photons[h.indices[i]];
         float d = distance(x, p.location);
-        color += dot(-p.incident, hit.normal) * p.color * (1 - (d / (FILTER_K * r)));
+        color += max(0, normalize(dot(-p.incident, hit.normal))) * p.color * (1 - (d / (FILTER_K * r)));
     }
 
     return color / ((1 - (2 / (3 * FILTER_K))) * PI * r * r);
