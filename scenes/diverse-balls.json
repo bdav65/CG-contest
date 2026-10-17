@@ -1,15 +1,19 @@
 {
-    "Eye": [2.00, 2.00, -10.00],
-    "Shadows": false,
-    "Texture": "textures/basketball.png",
-    "MaxBounces": 5,
+    "Eye": [200.00, 200.00, -1000.00],
+    "MaxBounces": 8,
+    "SubpixelsPerAxis": 4,
+    "Caustics": {
+        "PhotonCount": 10000,
+        "MaxBounces": 32,
+        "MaxTries": 256
+    },
     "Lights": [
         {
-            "position": [-2.00, 6.00, -15.00],
+            "position": [-200.00, 600.00, -1500.00],
             "color": [0.4, 0.4, 0.8]
         },
         {
-            "position": [6.00, 6.00, -15.00],
+            "position": [600.00, 600.00, -1500.00],
             "color": [0.8, 0.8, 0.4]
         }
     ],
@@ -17,90 +21,81 @@
         {
             "type": "sphere",
             "comment": "Blue sphere",
-            "position": [0.90, 3.20, -1.00],
-            "radius": 0.50,
+            "position": [90, 320, -100],
+            "radius": 50,
             "material":
             {
                 "color": [0.0, 0.0, 1.0],
-                "ka": 0.2,
-                "kd": 0.7,
-                "ks": 0.5,
-                "n": 64
+                "roughness": 0.5,
+                "IOR": 1.0,
+                "transparency": 0.0
             }
         },
         {
             "type": "sphere",
             "comment": "Green sphere",
-            "position": [2.10, 2.70, -3.00],
-            "radius": 0.50,
+            "position": [210, 270, -300],
+            "radius": 50,
             "material":
             {
                 "color": [0.0, 1.0, 0.0],
-                "ka": 0.2,
-                "kd": 0.3,
-                "ks": 0.5,
-                "n": 8
+                "roughness": 0.5,
+                "IOR": 1.0,
+                "transparency": 0.0
             }
         },
         {
             "type": "sphere",
             "comment": "Red sphere",
-            "position": [2.90, 1.70, -1.50],
-            "radius": 0.50,
+            "position": [290, 170, -150],
+            "radius": 50,
             "material":
             {
                 "color": [1.0, 0.0, 0.0],
-                "ka": 0.2,
-                "kd": 0.7,
-                "ks": 0.8,
-                "n": 32
+                "roughness": 0.2,
+                "IOR": 1.0,
+                "transparency": 0.0
             }
         },
         {
             "type": "sphere",
             "comment": "Transparent sphere",
-            "position": [1.40, 2.20, -4.00],
-            "radius": 0.50,
+            "position": [140, 220, -400],
+            "radius": 50,
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "ka": 0.0,
-                "kd": 0.0,
-                "ks": 0.95,
-                "n": 16,
-                "isTransparent": true,
-                "nt": 1.55
+                "roughness": 0.0,
+                "IOR": 1.55,
+                "transparency": 1.0
             }
         },
         {
             "type": "sphere",
             "comment": "Orange basketball",
-            "position": [1.1, 1.3, -2],
-            "radius": 0.5,
+            "position": [110, 130, -200],
+            "radius": 50,
             "rotation": [0,1,0.7],
             "angle": 20,
             "material":
             {
-                "hasTexture": true,
                 "color": [1.0, 0.5, 0.0],
-                "ka": 0.2,
-                "kd": 0.8,
-                "ks": 0.5,
-                "n": 32
+                "roughness": 0.5,
+                "IOR": 1.0,
+                "transparency": 0.0
             }
         },
         {
             "type": "sphere",
             "comment": "Low intensity color sphere",
-            "position": [2, 2, 10],
-            "radius": 10,
+            "position": [200, 200, 1000],
+            "radius": 1000,
             "material":
             {
                 "color": [0.2, 0.3, 0.3],
-                "ka": 0.2,
-                "kd": 0.8,
-                "ks": 0,
-                "n": 1
+                "roughness": 1.0,
+                "IOR": 1.0,
+                "transparency": 0.0
             }
         }
     ]

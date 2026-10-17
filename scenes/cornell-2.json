@@ -1,12 +1,16 @@
 {
     "Eye": [0, 0, -1500],
-    "Shadows": true,
-    "Texture": "textures/earth.png",
     "MaxBounces": 8,
+    "SubpixelsPerAxis": 4,
+    "Caustics": {
+        "PhotonCount": 12000,
+        "MaxBounces": 32,
+        "MaxTries": 256
+    },
     "Lights": [
         {
             "position": [0, 98.5, -963],
-            "color": [1.0, 1.0, 1.0]
+            "color": [0.9, 0.85, 0.8]
         }
     ],
     "Objects": [
@@ -50,7 +54,7 @@
             "material":
             {
                 "color": [0.6, 0.8, 0.6],
-                "roughness": 0.5,
+                "roughness": 1.0,
                 "IOR": 1.46,
                 "transparency": 0.0
             }
@@ -65,7 +69,7 @@
             "material":
             {
                 "color": [0.6, 0.8, 0.6],
-                "roughness": 0.5,
+                "roughness": 1.0,
                 "IOR": 1.46,
                 "transparency": 0.0
             }
@@ -168,9 +172,9 @@
             "material":
             {
                 "color": [1.0, 1.0, 1.0],
-                "roughness": 1.0,
+                "roughness": 0.0,
                 "IOR": 1.46,
-                "transparency": 0.0
+                "transparency": 1.0
             }
         }
     ]

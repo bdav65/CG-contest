@@ -5,8 +5,7 @@
     "Caustics": {
         "PhotonCount": 50000,
         "MaxBounces": 32,
-        "MaxTries": 256,
-        "EstimatePhotons": 50
+        "MaxTries": 256
     },
     "Lights": [
         {

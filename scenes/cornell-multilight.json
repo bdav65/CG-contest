@@ -1,8 +1,12 @@
 {
     "Eye": [0, 0, -1500],
-    "Shadows": true,
-    "Texture": "textures/earth.png",
     "MaxBounces": 8,
+    "SubpixelsPerAxis": 4,
+    "Caustics": {
+        "PhotonCount": 50000,
+        "MaxBounces": 32,
+        "MaxTries": 256
+    },
     "Lights": [
         {
             "position": [-50, 98.5, -963],
