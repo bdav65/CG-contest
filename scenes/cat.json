@@ -1,7 +1,7 @@
 {
     "Eye": [0, 400, -3000],
     "MaxBounces": 8,
-    "SubpixelsPerAxis": 4,
+    "SubpixelsPerAxis": 8,
     "Caustics": {
         "PhotonCount": 25000,
         "MaxBounces": 32,
@@ -16,7 +16,7 @@
     "Objects": [
         {
             "type": "model",
-            "comment": "Diamond model",
+            "comment": "Cat model",
             "file": "scenes/models/cat.obj",
             "offset": [0, 0, 0],
             "scale": 1.0,
