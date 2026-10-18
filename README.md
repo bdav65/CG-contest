@@ -1,6 +1,6 @@
 ## About
 
-An implementation of caustics for the 2026 RUG Computer Graphics contest. The caustics are generated using photon mapping.
+An implementation of caustics for the 2026 RUG Computer Graphics contest (solo submission). The caustics are generated using photon mapping.
 
 ## Usage
 
@@ -34,14 +34,14 @@ The *k* value of the k-nn photon search cannot be controlled from the scene file
 
 ## Showcase
 
-Caustics created by two glass spheres inside a Cornell box:
+Caustics created by two transparent spheres inside a Cornell box (`scenes/cornell.json`):
 
 ![caustics example 1](images/caustics.png)
 
-More complex caustics from a brilliant-cut diamond:
+More complex caustics from a brilliant-cut diamond (`scenes/diamond.json`):
 
 ![caustics example 2](images/diamond.png)
 
-The obligatory cat model (some caustics are visible in the shadow of the cat):
+Caustics from the cat model (some caustics are visible in the shadow of the cat) (`scenes/cat.json`):
 
 ![caustics example 3](images/cat.png)

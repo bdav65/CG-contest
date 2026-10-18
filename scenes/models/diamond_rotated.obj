@@ -1,6 +1,5 @@
 # Blender 5.2.2 LTS
 # www.blender.org
-mtllib diamond_rotated.mtl
 o Cone
 v 0.497653 0.707354 0.823441
 v 0.696913 0.977857 0.625037

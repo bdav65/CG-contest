@@ -1,6 +1,5 @@
 # Blender 5.2.2 LTS
 # www.blender.org
-mtllib cat.mtl
 o cat
 v 413.902985 313.460388 -68.774025
 v 394.199982 295.621307 -62.282024
